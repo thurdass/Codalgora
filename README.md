@@ -77,9 +77,6 @@ Também é possível marcar pontos de parada na margem esquerda do editor. Os co
 - `examples`: programas originais para experimentar.
 - `docs`: arquitetura, API, compatibilidade e evidências da investigação.
 
-Consulte a [arquitetura](docs/arquitetura.md), a [API Java](docs/api.md) e o [relatório REA](docs/engenharia-reversa.md). O Algora foi implementado de forma independente. O executável, recursos e código proprietário do VisualG não são distribuídos. A análise estática do original não comprova equivalência integral de comportamento.
-
-Repositório: [thurdass/Algora](https://github.com/thurdass/Algora), privado. Os commits seguem Conventional Commits.
 
 ### Aparência
 
