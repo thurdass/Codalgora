@@ -11,18 +11,18 @@ import tempfile
 import time
 
 root = pathlib.Path(__file__).resolve().parents[3]
-installer = root / "desktop/build/jpackage/installer/algora_0.2.0_amd64.deb"
-with tempfile.TemporaryDirectory(prefix="algora-desktop-") as directory:
+installer = root / "desktop/build/jpackage/installer/codalgora_0.2.0_amd64.deb"
+with tempfile.TemporaryDirectory(prefix="codalgora-desktop-") as directory:
     unpacked = pathlib.Path(directory)
     subprocess.run(["dpkg-deb", "-x", str(installer), directory], check=True)
-    app = unpacked / "opt/algora"
+    app = unpacked / "opt/codalgora"
     desktop = next((app / "lib").glob("*.desktop"))
     entry = dict(line.split("=", 1) for line in desktop.read_text().splitlines() if "=" in line)
     icon = unpacked / entry["Icon"].lstrip("/")
-    expected_icon = root / "desktop/src/main/resources/io/algora/desktop/icons/algora.png"
+    expected_icon = root / "desktop/src/main/resources/io/codalgora/desktop/icons/codalgora.png"
     assert icon.read_bytes() == expected_icon.read_bytes(), "Packaged icon differs from official logo"
     with tempfile.TemporaryFile() as log:
-        process = subprocess.Popen([str(app / "bin/Algora")], stdout=log, stderr=log)
+        process = subprocess.Popen([str(app / "bin/Codalgora")], stdout=log, stderr=log)
         try:
             deadline = time.monotonic() + 20
             while time.monotonic() < deadline:
@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix="algora-desktop-") as directory:
                     log.seek(0)
                     raise AssertionError("Installed application exited: " + log.read().decode())
                 tree = subprocess.check_output(["xwininfo", "-root", "-tree"], text=True)
-                match = re.search(r'(0x[0-9a-fA-F]+) "Algora —', tree)
+                match = re.search(r'(0x[0-9a-fA-F]+) "Codalgora —', tree)
                 if match:
                     window = match.group(1)
                     properties = subprocess.check_output(
@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="algora-desktop-") as directory:
                     classes = re.findall(r'"([^"]+)"', properties.splitlines()[0])
                     assert entry["StartupWMClass"] in classes, properties.splitlines()[0]
                     assert "Icon (" in properties, "The native window has no icon"
-                    print("ALGORA_DESKTOP_IDENTITY_OK: " + entry["StartupWMClass"])
+                    print("CODALGORA_DESKTOP_IDENTITY_OK: " + entry["StartupWMClass"])
                     break
                 time.sleep(0.25)
             else:

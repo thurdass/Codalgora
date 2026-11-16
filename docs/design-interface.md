@@ -1,4 +1,4 @@
-# Interface do Algora
+# Interface do Codalgora
 
 A direção visual segue as referências do IntelliJ IDEA e VS Code fornecidas pelo usuário: superfícies contínuas, barras compactas, abas e terminal inferior. A faixa lateral reúne os controles reais de arquivos e depuração. O explorador atual lista os algoritmos abertos; navegação completa por diretórios ainda não está implementada.
 
@@ -26,4 +26,4 @@ Em **Exibir → Tema de cores**, selecione Grafite, Dracula, Nord, Solarizado es
 
 As janelas compactas recolhem painéis; Ctrl+B alterna arquivos e Ctrl+Shift+D alterna depuração. Os testes gráficos exercitam os seis temas, persistência da seleção, execução, entrada, autocompletar, pontos de parada e layout compacto. As capturas em `desktop/build/screenshots` permitem revisar cada paleta.
 
-O cabeçalho utiliza o emblema da logo oficial fornecida pelo usuário, ao lado do nome Algora. A imagem é distribuída como recurso local; o enquadramento exibe somente o símbolo para manter a leitura em 28 pixels e evitar repetir o nome contido na versão completa.
+O cabeçalho utiliza o emblema da logo oficial fornecida pelo usuário, ao lado do nome Codalgora. A imagem é distribuída como recurso local; o enquadramento exibe somente o símbolo para manter a leitura em 28 pixels e evitar repetir o nome contido na versão completa.

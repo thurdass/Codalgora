@@ -1,6 +1,6 @@
 # Compatibilidade com arquivos .alg
 
-O Algora implementa um subconjunto do dialeto Portugol do VisualG com interpretador próprio em Java 21 e parser ANTLR4. Arquivos `.alg` de outros ambientes podem usar sintaxes diferentes. A extensão não garante compatibilidade.
+O Codalgora implementa um subconjunto do dialeto Portugol do VisualG com interpretador próprio em Java 21 e parser ANTLR4. Arquivos `.alg` de outros ambientes podem usar sintaxes diferentes. A extensão não garante compatibilidade.
 
 ## Recursos implementados
 
@@ -36,7 +36,7 @@ Argumentos usam vírgulas e grupos de parâmetros usam ponto e vírgula. A IDE i
 
 Não há suporte a registros, parâmetros vetoriais, acesso a arquivos, comandos gráficos ou opções específicas da aplicação original como `timer`. Comandos ou funções desconhecidos produzem erro na análise ou execução. Não são ignorados silenciosamente. O núcleo emite ANSI em `limpatela`; sua apresentação depende do consumidor. A IDE trata a limpeza do próprio terminal.
 
-A cobertura deve ser avaliada em três níveis: aceitação pelo parser, execução sem erro e equivalência de saída com o original. Um arquivo sintaticamente aceito ainda pode referenciar recursos não implementados. Os testes JUnit exercitam algoritmos originais e os comportamentos esperados do Algora.
+A cobertura deve ser avaliada em três níveis: aceitação pelo parser, execução sem erro e equivalência de saída com o original. Um arquivo sintaticamente aceito ainda pode referenciar recursos não implementados. Os testes JUnit exercitam algoritmos originais e os comportamentos esperados do Codalgora.
 
 O [levantamento da implementação Java](../interpreter/compatibility-survey.md) mediu **58 de 73 arquivos aceitos pelo parser (79,5%)**, com 15 rejeições, na instalação local fornecida. Essa porcentagem descreve aceitação sintática e construção da AST desse conjunto. Foram executados também quatro algoritmos originais locais: fatorial com entrada 5 produziu 120; os vetores finais dos exemplos de insertion sort e bubble sort foram verificados em ordem crescente; o exemplo de interrupção terminou. Nenhum desses arquivos foi redistribuído. O relatório conserva método, identidade do conjunto e resultados por arquivo.
 

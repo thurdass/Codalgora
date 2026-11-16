@@ -1,3 +1,3 @@
 pluginManagement { repositories { gradlePluginPortal(); mavenCentral() } }
-rootProject.name = "Algora"
+rootProject.name = "Codalgora"
 include("interpreter", "desktop", "cli")

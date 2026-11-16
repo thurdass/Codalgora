@@ -32,11 +32,11 @@ $state = $msi.GetType().InvokeMember('ProductState', [Reflection.BindingFlags]::
 if ($state -ne 5) { throw "Windows Installer product state is $state instead of installed" }
 $location = $msi.GetType().InvokeMember('ProductInfo', [Reflection.BindingFlags]::GetProperty, $null, $msi, @($productCode, 'InstallLocation'))
 try {
-    $executable = Join-Path $location 'Algora.exe'
+    $executable = Join-Path $location 'Codalgora.exe'
     if (!(Test-Path $executable)) { throw "Installed launcher missing: $executable" }
     $shell = New-Object -ComObject WScript.Shell
-    $shortcuts = @(Get-ChildItem ([Environment]::GetFolderPath('Desktop')) -Filter '*Algora*.lnk') +
-        @(Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Recurse -Filter '*Algora*.lnk')
+    $shortcuts = @(Get-ChildItem ([Environment]::GetFolderPath('Desktop')) -Filter '*Codalgora*.lnk') +
+        @(Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Recurse -Filter '*Codalgora*.lnk')
     if ($shortcuts.Count -lt 2) { throw 'Desktop and Start Menu shortcuts were not both created' }
     foreach ($file in $shortcuts) {
         $shortcut = $shell.CreateShortcut($file.FullName)
@@ -48,10 +48,10 @@ try {
         throw 'Installed application timed out'
     }
     if ($app.ExitCode -ne 0) { throw "Installed application exit code $($app.ExitCode)" }
-    Write-Output 'ALGORA_WINDOWS_INSTALL_OK'
+    Write-Output 'CODALGORA_WINDOWS_INSTALL_OK'
 } finally {
     $uninstallLog = Join-Path $reports "$kind-uninstall.log"
     $remove = Start-Process msiexec.exe -ArgumentList @('/x', $productCode, '/qn', '/norestart', '/L*v', "`"$uninstallLog`"") -Wait -PassThru
     if ($remove.ExitCode -notin @(0, 3010)) { throw "Uninstall exit code $($remove.ExitCode); see $uninstallLog" }
-    Write-Output 'ALGORA_WINDOWS_UNINSTALL_OK'
+    Write-Output 'CODALGORA_WINDOWS_UNINSTALL_OK'
 }

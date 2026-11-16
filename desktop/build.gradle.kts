@@ -10,7 +10,7 @@ dependencies {
         implementation("org.openjfx:javafx-$module:$javafxVersion:$javafxPlatform")
     }
 }
-application { mainClass.set("io.algora.desktop.AlgoraLauncher") }
+application { mainClass.set("io.codalgora.desktop.CodalgoraLauncher") }
 tasks.named<JavaExec>("run") { jvmArgs("-Dfile.encoding=UTF-8"); workingDir(rootProject.projectDir) }
 val packageInput = tasks.register<Sync>("preparePackageInput") {
     dependsOn(tasks.jar)
@@ -22,7 +22,7 @@ val jpackageExecutable = javaToolchains.launcherFor {
     languageVersion.set(JavaLanguageVersion.of(21))
 }.map { it.metadata.installationPath.file("bin/jpackage${if (hostOs.isWindows) ".exe" else ""}").asFile.absolutePath }
 val applicationIcon = layout.projectDirectory.file(
-    "src/main/resources/io/algora/desktop/icons/algora.${if (hostOs.isWindows) "ico" else "png"}"
+    "src/main/resources/io/codalgora/desktop/icons/codalgora.${if (hostOs.isWindows) "ico" else "png"}"
 )
 val appImageDirectory = layout.buildDirectory.dir("jpackage/image")
 val appImage = tasks.register<Exec>("jpackageAppImage") {
@@ -33,7 +33,7 @@ val appImage = tasks.register<Exec>("jpackageAppImage") {
         delete(appImageDirectory)
         commandLine(jpackageExecutable.get(), "--type", "app-image", "--dest", appImageDirectory.get().asFile.absolutePath,
             "--input", layout.buildDirectory.dir("jpackage/input").get().asFile.absolutePath,
-            "--name", "Algora", "--app-version", project.version.toString(), "--vendor", "Algora",
+            "--name", "Codalgora", "--app-version", project.version.toString(), "--vendor", "Codalgora",
             "--description", "IDE de Portugol com interpretador independente",
             "--main-jar", tasks.jar.get().archiveFileName.get(), "--main-class", application.mainClass.get(),
             "--icon", applicationIcon.asFile.absolutePath,
@@ -49,10 +49,10 @@ tasks.register<Exec>("jpackageInstaller") {
         val output = layout.buildDirectory.dir("jpackage/installer").get().asFile
         delete(output)
         val args = mutableListOf(jpackageExecutable.get(), "--type", if(hostOs.isWindows) "exe" else if(hostOs.isMacOsX) "dmg" else "deb",
-            "--dest", output.absolutePath, "--name", "Algora", "--app-version", project.version.toString(),
-            "--vendor", "Algora", "--icon", applicationIcon.asFile.absolutePath, "--app-image", appImageDirectory.get().dir("Algora").asFile.absolutePath)
+            "--dest", output.absolutePath, "--name", "Codalgora", "--app-version", project.version.toString(),
+            "--vendor", "Codalgora", "--icon", applicationIcon.asFile.absolutePath, "--app-image", appImageDirectory.get().dir("Codalgora").asFile.absolutePath)
         if(hostOs.isWindows) args += listOf("--win-menu", "--win-shortcut", "--win-dir-chooser", "--win-per-user-install")
-        if(hostOs.isLinux) args += listOf("--resource-dir", layout.projectDirectory.dir("packaging/linux").asFile.absolutePath, "--linux-menu-group", "Development", "--linux-shortcut", "--linux-package-name", "algora", "--linux-deb-maintainer", "thurdass@users.noreply.github.com")
+        if(hostOs.isLinux) args += listOf("--resource-dir", layout.projectDirectory.dir("packaging/linux").asFile.absolutePath, "--linux-menu-group", "Development", "--linux-shortcut", "--linux-package-name", "codalgora", "--linux-deb-maintainer", "thurdass@users.noreply.github.com")
         commandLine(args)
     }
 }
@@ -62,8 +62,8 @@ tasks.register<Exec>("jpackageSmokeTest") {
     description = "Launch and exercise the self-contained native application image"
     dependsOn(appImage)
     doFirst {
-        val image = appImageDirectory.get().dir("Algora").asFile
-        val executable = if(hostOs.isWindows) image.resolve("Algora.exe") else if(hostOs.isMacOsX) image.resolve("Contents/MacOS/Algora") else image.resolve("bin/Algora")
+        val image = appImageDirectory.get().dir("Codalgora").asFile
+        val executable = if(hostOs.isWindows) image.resolve("Codalgora.exe") else if(hostOs.isMacOsX) image.resolve("Contents/MacOS/Codalgora") else image.resolve("bin/Codalgora")
         commandLine(executable.absolutePath, "--smoke-test")
     }
 }
@@ -77,9 +77,9 @@ val windowsMsiInstaller = tasks.register<Exec>("jpackageWindowsMsi") {
         val output = layout.buildDirectory.dir("jpackage/installer").get().asFile
         output.mkdirs()
         commandLine(jpackageExecutable.get(), "--type", "msi",
-            "--dest", output.absolutePath, "--name", "Algora", "--app-version", project.version.toString(),
-            "--vendor", "Algora", "--icon", applicationIcon.asFile.absolutePath,
-            "--app-image", appImageDirectory.get().dir("Algora").asFile.absolutePath,
+            "--dest", output.absolutePath, "--name", "Codalgora", "--app-version", project.version.toString(),
+            "--vendor", "Codalgora", "--icon", applicationIcon.asFile.absolutePath,
+            "--app-image", appImageDirectory.get().dir("Codalgora").asFile.absolutePath,
             "--win-menu", "--win-shortcut", "--win-dir-chooser", "--win-per-user-install")
     }
 }
