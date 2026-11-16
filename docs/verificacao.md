@@ -74,6 +74,6 @@ A automação inicial via UI Automation não detectava corretamente as janelas M
 
 ### Rebranding para Codalgora
 
-Na revisão local do rebranding, `./gradlew clean test assemble` passou com 22 testes: 13 do interpretador, 3 da CLI e 6 da interface. `xvfb-run -a ./gradlew :desktop:jpackageSmokeTest` passou com `CODALGORA_SMOKE_OK`, e `xvfb-run -a ./gradlew :desktop:jpackageInstaller` gerou o instalador `.deb` em Linux. A verificação adicional do atalho Linux não concluiu porque `xwininfo` não conseguiu acessar o display virtual neste ambiente. A validação de MSI/EXE no Windows não foi executada.
+Na revisão local do rebranding, `./gradlew clean test assemble` passou com 23 testes: 14 do interpretador, 3 da CLI e 6 da interface. `xvfb-run -a ./gradlew :desktop:jpackageSmokeTest` passou com `CODALGORA_SMOKE_OK`, e `xvfb-run -a ./gradlew :desktop:jpackageInstaller` gerou o instalador `.deb` em Linux. A verificação adicional do atalho Linux não concluiu porque `xwininfo` não conseguiu acessar o display virtual neste ambiente. A validação de MSI/EXE no Windows não foi executada.
 
 Os registros anteriores deste documento conservam URLs, nomes de artefatos, classes e marcadores da identidade Algora, pois descrevem resultados dessas revisões. O caminho Java Preferences `/io/algora/desktop` também permanece intencionalmente para preservar temas já salvos pelos usuários.
