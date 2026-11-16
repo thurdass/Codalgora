@@ -1,0 +1,115 @@
+<div id="codalgora-builder" aria-label="Proposta de GUI Builder do Codalgora">
+  <style>
+    #codalgora-builder {
+      --cg-bg: light-dark(#f3f5f7, #17191c);
+      --cg-panel: light-dark(#ffffff, #202327);
+      --cg-panel-2: light-dark(#f8f9fa, #25292e);
+      --cg-line: light-dark(#d9dee4, #373d44);
+      --cg-text: light-dark(#20262d, #e2e7ec);
+      --cg-muted: light-dark(#687480, #9aa5b0);
+      --cg-accent: light-dark(#1677c8, #42a5f5);
+      --cg-select: light-dark(#e7f3fd, #163b56);
+      color: var(--cg-text); background: var(--cg-bg); border-radius: 10px;
+      font: 13px/1.4 "IBM Plex Sans", Inter, system-ui, sans-serif; overflow: hidden;
+      border: 1px solid var(--cg-line); max-width: 1024px; margin: auto;
+    }
+    #codalgora-builder * { box-sizing: border-box; }
+    #codalgora-builder .top { height: 48px; display:flex; align-items:center; gap:18px; padding:0 16px; background:var(--cg-panel); border-bottom:1px solid var(--cg-line); }
+    #codalgora-builder .brand { font-weight:700; letter-spacing:.2px; }
+    #codalgora-builder .menu { display:flex; gap:15px; color:var(--cg-muted); }
+    #codalgora-builder .file { margin-left:auto; color:var(--cg-muted); }
+    #codalgora-builder .action { border:0; border-radius:5px; padding:7px 12px; color:white; background:#237fbd; font:inherit; }
+    #codalgora-builder .modebar { display:flex; align-items:center; gap:5px; padding:8px 14px; background:var(--cg-panel-2); border-bottom:1px solid var(--cg-line); }
+    #codalgora-builder .mode { padding:7px 12px; border-radius:5px; color:var(--cg-muted); }
+    #codalgora-builder .mode.active { color:var(--cg-text); background:var(--cg-panel); box-shadow:inset 0 -2px var(--cg-accent); }
+    #codalgora-builder .hint { margin-left:auto; color:var(--cg-muted); font-size:12px; }
+    #codalgora-builder .work { display:grid; grid-template-columns:180px minmax(300px,1fr) 225px; min-height:485px; }
+    #codalgora-builder .side { background:var(--cg-panel); padding:14px 12px; }
+    #codalgora-builder .left { border-right:1px solid var(--cg-line); }
+    #codalgora-builder .right { border-left:1px solid var(--cg-line); }
+    #codalgora-builder h3 { font-size:12px; margin:0 0 12px; font-weight:650; }
+    #codalgora-builder .group { margin:17px 0 7px; color:var(--cg-muted); font-size:11px; }
+    #codalgora-builder .tool { display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:5px; color:var(--cg-text); }
+    #codalgora-builder .glyph { display:inline-grid; place-items:center; width:23px; height:21px; border:1px solid var(--cg-line); border-radius:4px; color:var(--cg-accent); font-size:12px; }
+    #codalgora-builder .stage { padding:19px; display:grid; place-items:center; background-color:var(--cg-bg); background-image:radial-gradient(var(--cg-line) .7px, transparent .7px); background-size:16px 16px; }
+    #codalgora-builder .canvas { width:min(100%,430px); min-height:410px; background:var(--cg-panel); border:1px solid var(--cg-line); border-radius:7px; box-shadow:0 8px 28px #00000018; padding:20px; }
+    #codalgora-builder .canvas-head { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--cg-line); padding-bottom:12px; margin-bottom:17px; }
+    #codalgora-builder .canvas-head strong { font-size:14px; }
+    #codalgora-builder .canvas-head span { font-size:11px; color:var(--cg-muted); }
+    #codalgora-builder .widget { border:1px solid transparent; border-radius:5px; padding:9px 10px; margin:8px 0; cursor:default; }
+    #codalgora-builder .widget.selected { border-color:var(--cg-accent); background:var(--cg-select); }
+    #codalgora-builder .welcome { font-size:20px; font-weight:650; margin:10px 0 3px; }
+    #codalgora-builder .sub { color:var(--cg-muted); margin:0 0 16px; }
+    #codalgora-builder .field-label { font-size:12px; display:block; margin-bottom:5px; }
+    #codalgora-builder .field { border:1px solid var(--cg-line); border-radius:4px; padding:8px; color:var(--cg-muted); }
+    #codalgora-builder .button-preview { display:inline-block; border-radius:4px; padding:8px 14px; background:var(--cg-accent); color:white; margin-top:5px; }
+    #codalgora-builder .props { display:grid; gap:10px; }
+    #codalgora-builder .prop label { display:block; font-size:11px; color:var(--cg-muted); margin-bottom:4px; }
+    #codalgora-builder .value { border:1px solid var(--cg-line); border-radius:4px; background:var(--cg-panel-2); padding:7px 8px; min-height:31px; }
+    #codalgora-builder .toggle-row { display:flex; justify-content:space-between; align-items:center; }
+    #codalgora-builder .event { color:var(--cg-accent); }
+    #codalgora-builder .foot { height:30px; display:flex; align-items:center; padding:0 13px; border-top:1px solid var(--cg-line); color:var(--cg-muted); font-size:11px; background:var(--cg-panel); }
+    @media(max-width:760px) {
+      #codalgora-builder .work { grid-template-columns:145px minmax(230px,1fr); }
+      #codalgora-builder .right { grid-column:1 / -1; border-left:0; border-top:1px solid var(--cg-line); }
+      #codalgora-builder .props { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      #codalgora-builder .hint { display:none; }
+    }
+    @media(max-width:490px) {
+      #codalgora-builder .menu { display:none; }
+      #codalgora-builder .work { grid-template-columns:1fr; }
+      #codalgora-builder .left { border-right:0; border-bottom:1px solid var(--cg-line); }
+      #codalgora-builder .left-tools { display:flex; overflow:auto; gap:4px; }
+      #codalgora-builder .left-tools .group { display:none; }
+      #codalgora-builder .tool { flex:0 0 auto; }
+      #codalgora-builder .right { grid-column:auto; }
+      #codalgora-builder .props { grid-template-columns:1fr 1fr; }
+      #codalgora-builder .stage { padding:12px; }
+    }
+  </style>
+  <header class="top">
+    <span class="brand">Codalgora</span>
+    <nav class="menu" aria-label="Menu principal"><span>Arquivo</span><span>Editar</span><span>Exibir</span><span>Ajuda</span></nav>
+    <span class="file">boas-vindas.cgui</span>
+    <button class="action" type="button">▶ Pré-visualizar</button>
+  </header>
+  <nav class="modebar" aria-label="Modo de edição">
+    <span class="mode">Algoritmo</span><span class="mode active">Interface</span>
+    <span class="hint">Arraste componentes para a tela · selecione para editar</span>
+  </nav>
+  <main class="work">
+    <aside class="side left">
+      <h3>Componentes</h3>
+      <div class="left-tools">
+        <div class="group">BÁSICOS</div>
+        <div class="tool"><span class="glyph">T</span>Texto</div>
+        <div class="tool"><span class="glyph">▭</span>Botão</div>
+        <div class="tool"><span class="glyph">▤</span>Campo de texto</div>
+        <div class="tool"><span class="glyph">☑</span>Caixa de seleção</div>
+        <div class="group">ORGANIZAÇÃO</div>
+        <div class="tool"><span class="glyph">↔</span>Coluna</div>
+        <div class="tool"><span class="glyph">▦</span>Painel</div>
+      </div>
+    </aside>
+    <section class="stage" aria-label="Tela em construção">
+      <div class="canvas">
+        <div class="canvas-head"><strong>Tela inicial</strong><span>360 × 640</span></div>
+        <div class="widget"><div class="welcome">Olá, estudante!</div><p class="sub">Vamos começar a aprender?</p></div>
+        <div class="widget"><label class="field-label">Seu nome</label><div class="field">Digite seu nome</div></div>
+        <div class="widget selected"><span class="button-preview">Começar</span></div>
+      </div>
+    </section>
+    <aside class="side right">
+      <h3>Propriedades · Botão</h3>
+      <div class="props">
+        <div class="prop"><label>Texto</label><div class="value">Começar</div></div>
+        <div class="prop"><label>Nome no algoritmo</label><div class="value">botaoComecar</div></div>
+        <div class="prop"><label>Largura</label><div class="value">Ajustar ao texto</div></div>
+        <div class="prop"><label>Cor</label><div class="value">Azul padrão</div></div>
+        <div class="prop"><label>Ao clicar</label><div class="value event">Abrir lógica do evento…</div></div>
+        <div class="prop toggle-row"><span>Visível</span><span>● Sim</span></div>
+      </div>
+    </aside>
+  </main>
+  <footer class="foot">Projeto: Interface de boas-vindas · Sem código necessário para desenhar</footer>
+</div>

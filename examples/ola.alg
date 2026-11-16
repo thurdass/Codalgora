@@ -1,4 +1,4 @@
-algoritmo "Olá, Algora"
+algoritmo "Olá, Codalgora"
 inicio
    escreval("Olá, mundo!")
 fimalgoritmo

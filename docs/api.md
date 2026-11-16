@@ -1,15 +1,15 @@
 # API Java do interpretador
 
-O módulo `interpreter` usa Java 21 e não depende da interface. A fachada pública é `io.algora.interpreter.AlgoraEngine`; `DebugSession`, `Snapshot`, `Status`, `InputProvider`, `Program` e `AlgoraException` são tipos públicos do mesmo pacote.
+O módulo `interpreter` usa Java 21 e não depende da interface. A fachada pública é `io.codalgora.interpreter.CodalgoraEngine`; `DebugSession`, `Snapshot`, `Status`, `InputProvider`, `Program` e `CodalgoraException` são tipos públicos do mesmo pacote.
 
 ```java
-import io.algora.interpreter.AlgoraEngine;
-import io.algora.interpreter.DebugSession;
-import io.algora.interpreter.Snapshot;
-import io.algora.interpreter.Status;
+import io.codalgora.interpreter.CodalgoraEngine;
+import io.codalgora.interpreter.DebugSession;
+import io.codalgora.interpreter.Snapshot;
+import io.codalgora.interpreter.Status;
 import java.util.Set;
 
-DebugSession session = AlgoraEngine.createSession(
+DebugSession session = CodalgoraEngine.createSession(
     source,
     () -> "42",                      // Uma string por leitura.
     System.out::print,
@@ -29,12 +29,12 @@ Snapshot finalState = completion.join();
 
 | Operação | Finalidade |
 | --- | --- |
-| `AlgoraEngine.parse(String)` | Analisa o texto e devolve um `Program`, sem executar instruções |
-| `AlgoraEngine.run(String, InputProvider, Consumer<String>)` | Executa diretamente e devolve um `Snapshot` final |
-| `AlgoraEngine.createSession(String, InputProvider, Consumer<String>, Consumer<Snapshot>)` | Cria uma `DebugSession` controlável e prepara as declarações globais |
+| `CodalgoraEngine.parse(String)` | Analisa o texto e devolve um `Program`, sem executar instruções |
+| `CodalgoraEngine.run(String, InputProvider, Consumer<String>)` | Executa diretamente e devolve um `Snapshot` final |
+| `CodalgoraEngine.createSession(String, InputProvider, Consumer<String>, Consumer<Snapshot>)` | Cria uma `DebugSession` controlável e prepara as declarações globais |
 | `InputProvider.read()` | Fornece uma entrada textual para cada destino de `leia`; pode lançar exceção |
 
-O provedor pode ser nulo quando o programa não precisa de entrada humana. `null` retornado por `read()` sinaliza entrada encerrada e produz erro. Os callbacks de saída e observação podem ser nulos. `AlgoraException.line()` informa a linha da falha; a mensagem também inclui essa linha. A criação da sessão pode falhar ao avaliar declarações globais, além dos erros sintáticos.
+O provedor pode ser nulo quando o programa não precisa de entrada humana. `null` retornado por `read()` sinaliza entrada encerrada e produz erro. Os callbacks de saída e observação podem ser nulos. `CodalgoraException.line()` informa a linha da falha; a mensagem também inclui essa linha. A criação da sessão pode falhar ao avaliar declarações globais, além dos erros sintáticos.
 
 ## Sessões e snapshots
 
@@ -58,4 +58,4 @@ A pausa acontece antes da instrução indicada. Cabeçalhos de laços voltam a g
 
 O observador recebe o estado inicial durante a criação e atualizações durante a execução. Encaminhe mudanças gráficas à thread JavaFX, por exemplo com `Platform.runLater`, e mantenha callbacks rápidos. `stop()` depende de o provedor bloqueante de entrada respeitar a interrupção da thread; a IDE usa uma fila interrompível. Provedores que ignoram interrupção podem atrasar o encerramento. O adaptador deve limpar controles de entrada pendentes.
 
-Cancelamento conclui a future normalmente com estado `STOPPED`. Erros de execução a concluem excepcionalmente e publicam `ERROR`. `AlgoraEngine.run` usa `join()` internamente; esses erros podem chegar envolvidos em `CompletionException`. O consumidor deve tratar ambos os caminhos.
+Cancelamento conclui a future normalmente com estado `STOPPED`. Erros de execução a concluem excepcionalmente e publicam `ERROR`. `CodalgoraEngine.run` usa `join()` internamente; esses erros podem chegar envolvidos em `CompletionException`. O consumidor deve tratar ambos os caminhos.

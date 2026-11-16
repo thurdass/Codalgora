@@ -6,7 +6,7 @@ Data: 20/10/2026. Implementação analisada: módulo `interpreter`, Java 21.0.12
 
 Foram lidos, sem alterações, os arquivos `.alg` recursivos da pasta `Exemplos` (extensão sem distinção de caixa) e `TESTE.alg` da raiz da instalação fornecida. Arquivos distintos não foram deduplicados. A decodificação tenta UTF-8 estrito e usa Windows-1252 quando necessário. Nenhum arquivo original foi incorporado ao repositório.
 
-Cada arquivo passou por `AlgoraEngine.parse`: lexer e parser ANTLR, seguidos do visitor que constrói a AST independente. Isso valida sintaxe e construção da árvore, **não** valida a execução de todas as chamadas, nem equivalência com o VisualG. O primeiro erro de cada arquivo limita a classificação; corrigir um erro pode revelar outros.
+Cada arquivo passou por `CodalgoraEngine.parse`: lexer e parser ANTLR, seguidos do visitor que constrói a AST independente. Isso valida sintaxe e construção da árvore, **não** valida a execução de todas as chamadas, nem equivalência com o VisualG. O primeiro erro de cada arquivo limita a classificação; corrigir um erro pode revelar outros.
 
 **58 de 73 arquivos aceitos (79,5%); 15 rejeitados.** O parser Java rejeita `cronometro on` já na análise sintática, portanto o resultado não deve ser comparado diretamente com a aceitação permissiva de comandos pela implementação anterior.
 
@@ -35,7 +35,7 @@ Identidade SHA-256 do conjunto (concatenação ordenada de caminho relativo, NUL
 | `Exemplos/bbsort.alg` | Entrada numérica aleatória; vetor final verificado | Concluído em 301 passos; vetor em ordem crescente |
 | `Exemplos/interrompa.alg` | Caminho padrão sem entrada | Concluído em 75 passos |
 
-Os testes aleatórios usaram gerador determinístico com semente 73, multiplicador 16807 e módulo 2147483647. Nenhuma dessas execuções comparou automaticamente a saída com um processo VisualG; os resultados estabelecem comportamento do Algora nesses caminhos. O algoritmo original não foi copiado.
+Os testes aleatórios usaram gerador determinístico com semente 73, multiplicador 16807 e módulo 2147483647. Nenhuma dessas execuções comparou automaticamente a saída com um processo VisualG; os resultados estabelecem comportamento do Codalgora nesses caminhos. O algoritmo original não foi copiado.
 
 ## Reprodução
 

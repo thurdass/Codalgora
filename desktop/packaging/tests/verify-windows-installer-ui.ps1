@@ -71,7 +71,7 @@ try {
             $children = [InstallerNative]::Children($window.Handle)
             $names = @($children | Where-Object { $_.Class -eq 'Button' -and $_.Visible } | ForEach-Object Name)
             $labels = ($window.Name + ' ' + (($children | ForEach-Object Name) -join ' '))
-            if ($labels -match 'Algora' -and $names -match 'Next|Install|Repair|Finish' -and $window.Width -gt 0 -and $window.Height -gt 0) {
+            if ($labels -match 'Codalgora' -and $names -match 'Next|Install|Repair|Finish' -and $window.Width -gt 0 -and $window.Height -gt 0) {
                 $labels | Set-Content (Join-Path $reports "$kind-ui.txt")
                 $size = New-Object System.Drawing.Size($window.Width, $window.Height)
                 $origin = New-Object System.Drawing.Point($window.Left, $window.Top)
@@ -93,7 +93,7 @@ try {
         [InstallerNative]::Windows() | ConvertTo-Json -Depth 3 | Set-Content (Join-Path $reports "$kind-windows.json")
         throw "Installer did not show a visible wizard within 45 seconds ($kind)"
     }
-    Write-Output "ALGORA_WINDOWS_INSTALLER_UI_OK: $kind"
+    Write-Output "CODALGORA_WINDOWS_INSTALLER_UI_OK: $kind"
 } finally {
     foreach ($window in @(Get-InstallerWindows)) {
         [InstallerNative]::SetForegroundWindow($window.Handle) | Out-Null

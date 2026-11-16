@@ -1,6 +1,6 @@
 plugins { base }
 allprojects {
-    group = "io.algora"
+    group = "io.codalgora"
     version = "0.2.0"
     repositories { mavenCentral() }
 }

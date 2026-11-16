@@ -1,4 +1,4 @@
-import io.algora.interpreter.*;
+import io.codalgora.interpreter.*;
 import java.nio.*;
 import java.nio.charset.*;
 import java.nio.file.*;
@@ -32,7 +32,7 @@ public class CompatibilitySurvey {
     int passed = 0;
     for (Path p : paths) {
       try {
-        AlgoraEngine.parse(read(p));
+        CodalgoraEngine.parse(read(p));
         passed++;
         System.out.println("PASS\t" + base.relativize(p));
       } catch (Exception e) {
@@ -43,7 +43,7 @@ public class CompatibilitySurvey {
     for (String name : List.of("fatorial.alg", "inssort.alg", "bbsort.alg", "interrompa.alg")) {
       StringBuilder output = new StringBuilder();
       var session =
-          AlgoraEngine.createSession(
+          CodalgoraEngine.createSession(
               read(base.resolve("Exemplos").resolve(name)), () -> "5", output::append, null);
       long[] seed = {73};
       session.random(
