@@ -321,4 +321,79 @@ final class InterpreterTest {
             .getMessage()
             .contains("Índice fora"));
   }
+
+  @Test
+  void interactiveSessionRunsProceduresSeriallyWithSharedGlobals() throws Exception {
+    String source =
+        "algoritmo \"eventos\"\n"
+            + "var total:inteiro\n"
+            + "procedimento incrementar\n"
+            + "inicio\n"
+            + "total <- total + 1\n"
+            + "escreval(total)\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "total <- 0\n"
+            + "escreval(\"pronto\")\n"
+            + "fimalgoritmo\n";
+    StringBuilder output = new StringBuilder();
+    DebugSession session = CodalgoraEngine.createInteractiveSession(source, null, output::append, null);
+    CompletableFuture<Snapshot> stopped = session.startInteractive(false);
+
+    assertEquals(1.0, session.fire("incrementar").get(5, TimeUnit.SECONDS).variables().get("total"));
+    assertEquals(2.0, session.fire("incrementar").get(5, TimeUnit.SECONDS).variables().get("total"));
+    session.stop();
+
+    assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
+    assertEquals("pronto\n1\n2\n", output.toString());
+  }
+
+  @Test
+  void interactiveSessionRejectsFunctionsAndUnknownHandlers() throws Exception {
+    String source =
+        "algoritmo \"eventos\"\n"
+            + "funcao resposta():inteiro\n"
+            + "inicio\n"
+            + "retorne 1\n"
+            + "fimfuncao\n"
+            + "procedimento agir\n"
+            + "inicio\n"
+            + "escreval(\"ok\")\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "escreval(\"pronto\")\n"
+            + "fimalgoritmo\n";
+    DebugSession session = CodalgoraEngine.createInteractiveSession(source, null, null, null);
+    CompletableFuture<Snapshot> stopped = session.startInteractive(false);
+    assertThrows(ExecutionException.class, () -> session.fire("resposta").get(5, TimeUnit.SECONDS));
+    assertThrows(ExecutionException.class, () -> session.fire("ausente").get(5, TimeUnit.SECONDS));
+    assertEquals(Status.RUNNING, session.fire("agir").get(5, TimeUnit.SECONDS).status());
+    session.stop();
+    assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
+  }
+
+  @Test
+  void visualBindingsSetGlobalValuesBeforeProcedureAndReturnUpdatedValues() throws Exception {
+    String source =
+        "algoritmo \"vinculos\"\n"
+            + "var nome:caractere\n"
+            + "procedimento atualizar\n"
+            + "inicio\n"
+            + "escreval(nome)\n"
+            + "nome <- \"Codalgora\"\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "nome <- \"\"\n"
+            + "fimalgoritmo\n";
+    StringBuilder output = new StringBuilder();
+    DebugSession session = CodalgoraEngine.createInteractiveSession(source, null, output::append, null);
+    CompletableFuture<Snapshot> stopped = session.startInteractive(false);
+
+    Snapshot result = session.fire("atualizar", Map.of("nome", "Arthur")).get(5, TimeUnit.SECONDS);
+
+    assertEquals("Arthur", output.toString().strip());
+    assertEquals("Codalgora", result.variables().get("nome"));
+    session.stop();
+    assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
+  }
 }

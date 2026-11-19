@@ -34,19 +34,26 @@ public final class DebugSession {
     }
   }
 
+  private record Invocation(
+      String routine, Map<String, Object> bindings, CompletableFuture<Snapshot> completion) {}
+
   private final Program program;
   private final InputProvider input;
   private final Consumer<String> output;
   private final Consumer<Snapshot> observer;
   private final List<Map<String, Cell>> scopes = new ArrayList<>();
   private final Object monitor = new Object();
+  private final Object invocationLock = new Object();
+  private final BlockingQueue<Invocation> invocations = new ArrayBlockingQueue<>(64);
   private volatile Set<Integer> breakpoints = Set.of();
   private volatile boolean stopped, single, started;
+  private volatile boolean interactive;
   private volatile Thread worker;
   private volatile Status status = Status.READY;
-  private volatile Snapshot latest = new Snapshot(0, Map.of(), Status.READY, 0);
+  private volatile Snapshot latest = new Snapshot(0, Map.of(), Status.READY, 0, Map.of());
   private int line, depth;
   private long steps, maxSteps = 100_000;
+  private long stepBudgetStart;
   private int maxDepth = 100;
   private boolean echo = true;
   private double[] randomInput;
@@ -78,8 +85,18 @@ public final class DebugSession {
   }
 
   public synchronized CompletableFuture<Snapshot> start(boolean debug) {
+    return startSession(debug, false);
+  }
+
+  /** Starts the main algorithm and then accepts serial, zero-argument procedure events. */
+  public synchronized CompletableFuture<Snapshot> startInteractive(boolean debug) {
+    return startSession(debug, true);
+  }
+
+  private CompletableFuture<Snapshot> startSession(boolean debug, boolean interactiveMode) {
     if (started) throw new IllegalStateException("Crie uma nova sessão para reiniciar");
     started = true;
+    interactive = interactiveMode;
     single = debug;
     CompletableFuture<Snapshot> result = new CompletableFuture<>();
     worker =
@@ -91,16 +108,19 @@ public final class DebugSession {
                   try {
                     block(program.body());
                     check();
+                    if (interactive) runInvocations();
                     status = Status.COMPLETED;
                     publish();
                     result.complete(latest);
                   } catch (CancellationException e) {
                     status = Status.STOPPED;
                     publish();
+                    failPendingInvocations(new CancellationException("Execução interrompida"));
                     result.complete(latest);
                   } catch (Throwable e) {
                     status = Status.ERROR;
                     publish();
+                    failPendingInvocations(e);
                     if (e instanceof Break) e = error("interrompa fora de um laço");
                     if (e instanceof Return) e = error("retorne fora de uma função");
                     result.completeExceptionally(e);
@@ -108,6 +128,112 @@ public final class DebugSession {
                 });
     worker.start();
     return result;
+  }
+
+  /** Queues one existing Portugol procedure for the interactive execution thread. */
+  public CompletableFuture<Snapshot> fire(String routineName) {
+    return fire(routineName, Map.of());
+  }
+
+  /** Queues a procedure and applies scalar global values supplied by visual controls. */
+  public CompletableFuture<Snapshot> fire(String routineName, Map<String, ?> bindings) {
+    CompletableFuture<Snapshot> completion = new CompletableFuture<>();
+    synchronized (invocationLock) {
+      if (!interactive || !started || stopped || status == Status.ERROR || status == Status.COMPLETED) {
+        completion.completeExceptionally(new IllegalStateException("A execução visual não está ativa"));
+        return completion;
+      }
+      Routine routine = findRoutine(routineName);
+      if (routine == null || routine.function() || !routine.parameters().isEmpty()) {
+        completion.completeExceptionally(new IllegalArgumentException(
+            "O evento precisa apontar para um procedimento existente sem parâmetros"));
+        return completion;
+      }
+      Map<String, Object> values = new LinkedHashMap<>();
+      for (var entry : bindings.entrySet()) {
+        Cell global = scopes.getFirst().get(entry.getKey().toLowerCase(Locale.ROOT));
+        if (global == null || !global.ranges.isEmpty()) {
+          completion.completeExceptionally(
+              new IllegalArgumentException("Variável global escalar não encontrada: " + entry.getKey()));
+          return completion;
+        }
+        if (global.constant) {
+          completion.completeExceptionally(
+              new IllegalArgumentException("Não é permitido alterar a constante " + entry.getKey()));
+          return completion;
+        }
+        values.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
+      }
+      if (!invocations.offer(new Invocation(routine.name(), Map.copyOf(values), completion)))
+        completion.completeExceptionally(new IllegalStateException("Muitos eventos aguardando execução"));
+    }
+    return completion;
+  }
+
+  private void runInvocations() {
+    status = Status.RUNNING;
+    publish();
+    while (!stopped) {
+      Invocation invocation;
+      try {
+        invocation = invocations.take();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new CancellationException("Execução interrompida");
+      }
+      if (invocation.completion().isCancelled()) continue;
+      stepBudgetStart = steps;
+      try {
+        applyBindings(invocation.bindings());
+        invokeProcedure(invocation.routine());
+        check();
+        publish();
+        invocation.completion().complete(latest);
+      } catch (RuntimeException | Error e) {
+        invocation.completion().completeExceptionally(e);
+        throw e;
+      }
+    }
+    throw new CancellationException("Execução interrompida");
+  }
+
+  private void applyBindings(Map<String, Object> bindings) {
+    for (var entry : bindings.entrySet()) {
+      Cell global = scopes.getFirst().get(entry.getKey());
+      if (global == null || global.constant || !global.ranges.isEmpty())
+        throw error("Variável visual inválida: " + entry.getKey());
+      global.value = convert(entry.getValue(), global.type);
+    }
+  }
+
+  private void invokeProcedure(String name) {
+    Routine routine = findRoutine(name);
+    if (routine == null || routine.function() || !routine.parameters().isEmpty())
+      throw error("Procedimento de evento inválido: " + name);
+    if (depth >= maxDepth) throw error("Limite de chamadas excedido");
+    Map<String, Cell> local = new LinkedHashMap<>();
+    scopes.add(local);
+    depth++;
+    try {
+      declare(routine.declarations(), local);
+      block(routine.body());
+    } catch (Return ignored) {
+      // Returning from a procedure ends the current event handler.
+    } finally {
+      scopes.removeLast();
+      depth--;
+    }
+  }
+
+  private Routine findRoutine(String name) {
+    if (name == null) return null;
+    String normalized = name.toLowerCase(Locale.ROOT);
+    return program.routines().stream().filter(r -> r.name().equals(normalized)).findFirst().orElse(null);
+  }
+
+  private void failPendingInvocations(Throwable error) {
+    Invocation pending;
+    while ((pending = invocations.poll()) != null) pending.completion().completeExceptionally(error);
   }
 
   public void setBreakpoints(Set<Integer> lines) {
@@ -135,7 +261,10 @@ public final class DebugSession {
   }
 
   public void stop() {
-    stopped = true;
+    synchronized (invocationLock) {
+      stopped = true;
+      failPendingInvocations(new CancellationException("Execução interrompida"));
+    }
     synchronized (monitor) {
       monitor.notifyAll();
     }
@@ -154,7 +283,7 @@ public final class DebugSession {
   private void check() {
     if (stopped || Thread.currentThread().isInterrupted())
       throw new CancellationException("Execução interrompida");
-    if (steps > maxSteps) throw error("Limite de instruções excedido");
+    if (steps - stepBudgetStart > maxSteps) throw error("Limite de instruções excedido");
   }
 
   private void checkpoint(int currentLine) {
@@ -186,11 +315,22 @@ public final class DebugSession {
 
   private void publish() {
     Map<String, Object> vars = new LinkedHashMap<>();
+    Map<String, Object> globals = new LinkedHashMap<>();
     if (!scopes.isEmpty()) {
-      for (var e : scopes.getFirst().entrySet()) vars.put(e.getKey(), copy(e.getValue().value));
+      for (var e : scopes.getFirst().entrySet()) {
+        Object value = copy(e.getValue().value);
+        globals.put(e.getKey(), value);
+        vars.put(e.getKey(), value);
+      }
       for (var e : scopes.getLast().entrySet()) vars.put(e.getKey(), copy(e.getValue().value));
     }
-    latest = new Snapshot(line, Collections.unmodifiableMap(vars), status, steps);
+    latest =
+        new Snapshot(
+            line,
+            Collections.unmodifiableMap(vars),
+            status,
+            steps,
+            Collections.unmodifiableMap(globals));
     observer.accept(latest);
   }
 
