@@ -16,6 +16,7 @@ fi
 system_applications=/usr/local/share/applications
 registered_launcher="$system_applications/codalgora-Codalgora.desktop"
 sudo install -d -m 755 "$system_applications"
+sudo install -d -m 755 /usr/local/share/desktop-directories
 if [[ -e "$registered_launcher" ]]; then
   echo "Unexpected pre-existing launcher: $registered_launcher" >&2
   exit 1
