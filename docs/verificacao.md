@@ -70,10 +70,22 @@ O [workflow 39535004943](https://github.com/thurdass/Algora/actions/runs/3953500
 
 A automação inicial via UI Automation não detectava corretamente as janelas MSI; a verificação passou a usar janelas e controles Win32. O encerramento precisou acionar o botão Cancel, em vez de depender apenas de WM_CLOSE. Essas falhas foram do teste, não demonstraram defeito nos instaladores. As capturas finais mostram os dois assistentes; a falha específica da máquina Windows 11 do usuário não foi reproduzida no runner Windows Server 2025. O MSI direto fornece uma alternativa que evita o executável intermediário, sem atribuir uma causa não confirmada ao ambiente do usuário.
 
-![Assistente MSI capturado no Windows do CI](assets/algora-installer-windows.png)
+![Captura histórica do assistente MSI Algora v0.2.0 no Windows do CI](assets/algora-installer-windows-v0.2.0.png)
 
 ### Rebranding para Codalgora
 
 Na revisão local do rebranding, `./gradlew clean test assemble` passou com 23 testes: 14 do interpretador, 3 da CLI e 6 da interface. `xvfb-run -a ./gradlew :desktop:jpackageSmokeTest` passou com `CODALGORA_SMOKE_OK`, e `xvfb-run -a ./gradlew :desktop:jpackageInstaller` gerou o instalador `.deb` em Linux. A verificação adicional do atalho Linux não concluiu porque `xwininfo` não conseguiu acessar o display virtual neste ambiente. A validação de MSI/EXE no Windows não foi executada.
 
 Os registros anteriores deste documento conservam URLs, nomes de artefatos, classes e marcadores da identidade Algora, pois descrevem resultados dessas revisões. O caminho Java Preferences `/io/algora/desktop` também permanece intencionalmente para preservar temas já salvos pelos usuários.
+
+### Validação dos instaladores Codalgora v0.2.1
+
+O commit `dc2b909` passou no [workflow de push 44573487692](https://github.com/thurdass/Codalgora/actions/runs/44573487692) e no [workflow do PR #2 44573502524](https://github.com/thurdass/Codalgora/actions/runs/44573502524), nos runners `ubuntu-latest` e `windows-latest`. Cada runner executou `build`, os 23 testes JUnit, `jpackageInstaller` e `jpackageSmokeTest` com runtime incluído.
+
+No Linux, o `.deb` gerado foi instalado pelo `apt`, consultado como pacote `codalgora` na versão efetiva do build e iniciado sob display virtual. O teste conferiu o nome Codalgora no lançador registrado no menu, o ícone, `StartupWMClass` e o título da janela. A desinstalação removeu o aplicativo e o atalho; um marcador no caminho legado de preferências `/io/algora/desktop` permaneceu.
+
+No Windows, os runners geraram MSI e EXE. Os dois assistentes visíveis foram conferidos quanto ao nome Codalgora; cada pacote foi instalado, teve os atalhos do Desktop e Menu Iniciar verificados, iniciou a aplicação instalada com `--smoke-test` e foi desinstalado. O teste também conferiu `ProductName=Codalgora`, `ProductVersion` igual à versão efetiva do Gradle, o título real da janela e o ícone incorporado ao executável. Logs e capturas do assistente estão no artefato `Windows-installer-diagnostics` da execução.
+
+Cada runner gerou `SHA256SUMS.txt` para seus instaladores. A publicação oficial usa os artefatos produzidos em um workflow da tag `v0.2.1`, recompõe um checksum único para o `.deb`, MSI e EXE, confere os hashes e só então cria a release. Isso mantém a release histórica `v0.2.0` inalterada.
+
+Durante a validação, uma checagem X11 testava incorretamente o texto do `xprop`; outra execução encontrou a ausência de diretórios de menu no runner headless e a falta de remoção do atalho pelo pacote Debian gerado. A verificação do ícone foi corrigida, o runner passou a preparar os diretórios padrão de menu e foi incluído um `prerm` para desregistrar o lançador. As execuções finais acima passaram com essas correções.

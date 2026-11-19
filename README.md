@@ -1,11 +1,11 @@
 # Codalgora
 
 ![Status: Beta](https://img.shields.io/badge/status-Beta-orange)
-![Versão: v0.2.0](https://img.shields.io/badge/vers%C3%A3o-v0.2.0-blue)
+![Versão: v0.2.1](https://img.shields.io/badge/vers%C3%A3o-v0.2.1-blue)
 ![Java 21](https://img.shields.io/badge/Java-21-007396)
 ![Plataformas: Linux e Windows](https://img.shields.io/badge/plataformas-Linux%20%7C%20Windows-555555)
 
-> **Beta v0.2.0:** o Codalgora está em desenvolvimento ativo e pode apresentar bugs ou comportamentos inesperados. Esta versão já oferece edição, execução e depuração de algoritmos em uma interface moderna.
+> **Versão beta:** o Codalgora está em desenvolvimento ativo e pode apresentar bugs ou comportamentos inesperados. A distribuição v0.2.1 disponibiliza instaladores após os workflows Linux e Windows validarem os artefatos.
 
 <p align="center">
   <img src="docs/assets/codalgora-logo.png" alt="Logo do Codalgora" width="320">
@@ -15,7 +15,7 @@
 
 Idealizado e desenvolvido por **Arthur Almeida**, o Codalgora é um projeto pessoal criado para oferecer uma IDE moderna e acessível a estudantes de lógica de programação. Seu objetivo é unir simplicidade, aprendizado e uma experiência de desenvolvimento que acompanhe os primeiros passos na programação.
 
-**Atualmente em fase beta (v0.2.0)**, o projeto continua recebendo melhorias, correções e novas funcionalidades.
+O projeto está em fase beta. O fluxo de publicação da v0.2.1 gera e valida os instaladores Linux e Windows antes de disponibilizar os downloads.
 
 O projeto usa **Java 21, JavaFX 21, ANTLR4 e RichTextFX**, com **Gradle Kotlin DSL**, testes **JUnit 5** e distribuição nativa via **jpackage**.
 
@@ -23,16 +23,19 @@ A interface reúne editor com abas e realce de sintaxe, entrada e saída do algo
 
 ![IDE JavaFX do Codalgora](docs/assets/codalgora.png)
 
-A interface utiliza fontes IBM Plex locais, painéis recolhíveis e composição adaptada a janelas compactas. Os 23 testes e a execução dos aplicativos empacotados passaram em Linux e Windows. Veja a [direção visual](docs/design-interface.md), a [visualização compacta](docs/assets/codalgora-compacto.png) e o [registro de verificação](docs/verificacao.md).
+A interface utiliza fontes IBM Plex locais, painéis recolhíveis e composição adaptada a janelas compactas. Veja a [direção visual](docs/design-interface.md), a [visualização compacta](docs/assets/codalgora-compacto.png) e o [registro de verificação](docs/verificacao.md).
 
-## Download — Beta v0.2.0
+## Downloads
 
-Baixe os instaladores na [release v0.2.0](https://github.com/thurdass/Codalgora/releases/tag/v0.2.0):
+Os links diretos dos instaladores v0.2.1 são ativados pela publicação da release, depois que os workflows validam os pacotes e seus checksums:
 
-- **Windows x64:** prefira `Codalgora-0.2.0.msi`, que abre diretamente no Windows Installer. O instalador `Codalgora-0.2.0.exe` também está disponível.
-- **Linux x64 (Debian/Ubuntu):** baixe `codalgora_0.2.0_amd64.deb` e execute `sudo apt install ./codalgora_0.2.0_amd64.deb`.
+- **Windows x64:** [MSI (recomendado)](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/Codalgora-0.2.1.msi) ou [EXE](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/Codalgora-0.2.1.exe).
+- **Linux x64 (Debian/Ubuntu):** [pacote DEB](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/codalgora_0.2.1_amd64.deb); instale com `sudo apt install ./codalgora_0.2.1_amd64.deb`.
+- [Checksums SHA-256](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/SHA256SUMS.txt).
 
-Os instaladores incluem o runtime Java; não é necessário instalar um JDK para usar a IDE. O arquivo `SHA256SUMS.txt` permite conferir a integridade dos downloads. O pacote Linux é destinado a distribuições compatíveis com `.deb`.
+Os instaladores incluem o runtime Java; não é necessário instalar um JDK para usar a IDE. O pacote Linux é destinado a distribuições compatíveis com `.deb`.
+
+Os arquivos da release histórica [Algora v0.2.0](https://github.com/thurdass/Codalgora/releases/tag/v0.2.0) permanecem disponíveis sem alterações e ainda exibem a identidade antiga.
 
 ## Executar a partir do código
 
@@ -80,7 +83,7 @@ Também é possível marcar pontos de parada na margem esquerda do editor. Os co
 
 Consulte a [arquitetura](docs/arquitetura.md), a [API Java](docs/api.md) e o [relatório REA](docs/engenharia-reversa.md). O Codalgora foi implementado de forma independente. O executável, recursos e código proprietário do VisualG não são distribuídos. A análise estática do original não comprova equivalência integral de comportamento.
 
-Repositório: [thurdass/Codalgora](https://github.com/thurdass/Codalgora), privado. Os commits seguem Conventional Commits.
+Repositório: [thurdass/Codalgora](https://github.com/thurdass/Codalgora). Os commits seguem Conventional Commits.
 
 
 ### Aparência

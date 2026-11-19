@@ -16,7 +16,7 @@ public final class StatusBar {
         new HBox(
             24,
             status,
-            new Label("Codalgora 0.2"),
+            new Label("Codalgora 0.2.1"),
             space,
             position,
             new Label("UTF-8"),

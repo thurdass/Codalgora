@@ -1,6 +1,6 @@
 # Instalação e desenvolvimento
 
-O Codalgora usa Java 21, JavaFX 21, ANTLR4 e RichTextFX. O build utiliza Gradle Wrapper com Kotlin DSL; não é necessário instalar Gradle globalmente. A primeira execução precisa de rede para baixar a distribuição e as dependências. Um JDK completo, com `jpackage`, é necessário para gerar pacotes.
+O Codalgora usa Java 21, JavaFX 21, ANTLR4 e RichTextFX. A distribuição v0.2.1 publica pacotes Linux e Windows após geração e validação nos runners correspondentes. A release histórica v0.2.0 contém os instaladores da marca Algora e permanece preservada. O build utiliza Gradle Wrapper com Kotlin DSL; não é necessário instalar Gradle globalmente. A primeira execução precisa de rede para baixar a distribuição e as dependências. Um JDK completo, com `jpackage`, é necessário para gerar pacotes.
 
 ## Desenvolvimento
 
@@ -33,7 +33,7 @@ O primeiro comando usa o tipo `app-image` do `jpackage`: uma pasta executável c
 
 A tarefa Linux gera `.deb` e requer `dpkg-deb` e `fakeroot`. A tarefa Windows gera `.exe` e `.msi` e requer WiX compatível com o JDK 21. O `.msi` é a opção recomendada para abrir diretamente o Windows Installer, sem a extração intermediária do `.exe`. Os pacotes precisam ser testados em cada sistema; a compilação Java por si só não verifica diálogos nativos, fontes, atalhos ou instalação.
 
-A aplicação fica em `desktop/build/jpackage/image/Codalgora/`; no Linux, o executável é `desktop/build/jpackage/image/Codalgora/bin/Codalgora`. Instaladores ficam em `desktop/build/jpackage/installer/`. A distribuição inclui runtime; o usuário final não precisa instalar um JDK separadamente.
+A aplicação fica em `desktop/build/jpackage/image/Codalgora/`; no Linux, o executável é `desktop/build/jpackage/image/Codalgora/bin/Codalgora`. Instaladores ficam em `desktop/build/jpackage/installer/`. A distribuição inclui runtime; o usuário final não precisa instalar um JDK separadamente. O pacote Debian registra o atalho no menu de aplicações e o remove na desinstalação; as preferências existentes em `/io/algora/desktop` são mantidas.
 
 ## Verificação dos pacotes
 
@@ -41,7 +41,7 @@ O build, os testes JavaFX e a execução da aplicação nativa com runtime inclu
 
 ## Ícone do aplicativo
 
-Os builds usam o emblema da logo oficial: PNG no Linux e ICO com múltiplas resoluções no Windows. O `jpackage` recebe o ícone tanto na aplicação quanto no instalador; a janela JavaFX também carrega o PNG. Os recursos ficam em `desktop/src/main/resources/io/codalgora/desktop/icons/`.
+Os builds Codalgora usam o emblema atualizado: PNG no Linux e ICO com múltiplas resoluções no Windows. O `jpackage` recebe o ícone tanto na aplicação quanto no instalador; a janela JavaFX carrega o recurso local. Os recursos ficam em `desktop/src/main/resources/io/codalgora/desktop/icons/`. Os instaladores históricos v0.2.0 ainda exibem a identidade Algora.
 
 Se você instalou um pacote anterior com o ícone padrão do Java, baixe o instalador atualizado da release e reinstale o aplicativo. Atalhos antigos criados manualmente podem precisar ser recriados; o ambiente desktop também pode manter o ícone antigo em cache até uma nova sessão.
 
@@ -53,21 +53,21 @@ O atalho distribuído no `.deb` declara `StartupWMClass=io.codalgora.desktop.Cod
 
 O CI instala o `.exe` silenciosamente, verifica o registro por usuário e os atalhos, executa a aplicação instalada e a desinstala. Os logs MSI ficam no artefato `Windows-installer-diagnostics` do workflow. Esse teste não substitui a validação dos diálogos interativos nem identifica problemas específicos de uma máquina sem a mensagem de erro correspondente.
 
-Para gerar um log local de instalação pelo PowerShell, no diretório do download:
+Para diagnosticar a instalação histórica Algora v0.2.0 pelo PowerShell, no diretório do download:
 
 ```powershell
-.\Codalgora-0.2.0.exe /L*v "$env:TEMP\codalgora-install.log"
+.\Algora-0.2.0.exe /L*v "$env:TEMP\algora-install.log"
 ```
 
 
 ### Instalador Windows em execução sem janela
 
-Se o `.exe` baixado ficar em execução sem mostrar a tela de instalação, use o pacote direto `Codalgora-0.2.0.msi` da mesma release. Esse formato evita o executável que extrai um MSI temporário e chama o Windows Installer. Se já houver uma instalação anterior de v0.2.0, remova-a em **Configurações → Aplicativos → Codalgora** antes de reinstalar um pacote revisado da mesma versão.
+Se o `.exe` histórico da v0.2.0 ficar em execução sem mostrar a tela de instalação, use o pacote direto `Algora-0.2.0.msi` da mesma release. Esse formato evita o executável que extrai um MSI temporário e chama o Windows Installer. Os dois instaladores pertencem à identidade Algora e não são os futuros pacotes Codalgora 0.2.1.
 
 O CI verifica a aparição do assistente visível dos dois formatos, cancela esse assistente e executa separadamente a instalação silenciosa, abertura do aplicativo e desinstalação. Capturas das telas, registros dos controles e logs MSI são mantidos no artefato `Windows-installer-diagnostics`.
 
 Para registrar uma falha na abertura do MSI pelo PowerShell:
 
 ```powershell
-msiexec.exe /i "$PWD\Codalgora-0.2.0.msi" /L*v "$env:TEMP\codalgora-msi.log"
+msiexec.exe /i "$PWD\Algora-0.2.0.msi" /L*v "$env:TEMP\algora-msi.log"
 ```

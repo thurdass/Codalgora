@@ -3,6 +3,7 @@ param([string]$InstallerPath)
 
 $ErrorActionPreference = 'Stop'
 $desktop = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+$repo = (Resolve-Path (Join-Path $desktop '..')).Path
 $installer = if ($InstallerPath) { Get-Item $InstallerPath } else {
     Get-ChildItem (Join-Path $desktop 'build/jpackage/installer/*.exe') | Select-Object -First 1
 }
@@ -30,10 +31,20 @@ $productCode = $match.Groups[1].Value
 $msi = New-Object -ComObject WindowsInstaller.Installer
 $state = $msi.GetType().InvokeMember('ProductState', [Reflection.BindingFlags]::GetProperty, $null, $msi, @($productCode))
 if ($state -ne 5) { throw "Windows Installer product state is $state instead of installed" }
+$productName = $msi.GetType().InvokeMember('ProductInfo', [Reflection.BindingFlags]::GetProperty, $null, $msi, @($productCode, 'ProductName'))
+$productVersion = $msi.GetType().InvokeMember('ProductInfo', [Reflection.BindingFlags]::GetProperty, $null, $msi, @($productCode, 'VersionString'))
+$versionMatch = [regex]::Match((Get-Content -Path (Join-Path $repo 'build.gradle.kts') -Raw), '(?m)^\s*version\s*=\s*"([^"]+)"')
+if (!$versionMatch.Success) { throw 'Project version missing from root build.gradle.kts' }
+if ($productName -ne 'Codalgora') { throw "Windows Installer ProductName is '$productName'" }
+if ($productVersion -ne $versionMatch.Groups[1].Value) { throw "Windows Installer ProductVersion is '$productVersion'" }
 $location = $msi.GetType().InvokeMember('ProductInfo', [Reflection.BindingFlags]::GetProperty, $null, $msi, @($productCode, 'InstallLocation'))
 try {
     $executable = Join-Path $location 'Codalgora.exe'
     if (!(Test-Path $executable)) { throw "Installed launcher missing: $executable" }
+    Add-Type -AssemblyName System.Drawing
+    $embeddedIcon = [System.Drawing.Icon]::ExtractAssociatedIcon($executable)
+    if (!$embeddedIcon) { throw 'Installed launcher has no embedded Codalgora icon' }
+    $embeddedIcon.Dispose()
     $shell = New-Object -ComObject WScript.Shell
     $shortcuts = @(Get-ChildItem ([Environment]::GetFolderPath('Desktop')) -Filter '*Codalgora*.lnk') +
         @(Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Recurse -Filter '*Codalgora*.lnk')
@@ -43,6 +54,20 @@ try {
         if ($shortcut.TargetPath -ne $executable) { throw "Shortcut target mismatch: $($file.FullName)" }
     }
     $app = Start-Process -FilePath $executable -ArgumentList '--smoke-test' -PassThru
+    $windowTitle = $null
+    $windowDeadline = [DateTime]::UtcNow.AddSeconds(15)
+    while (!$windowTitle -and [DateTime]::UtcNow -lt $windowDeadline -and !$app.HasExited) {
+        foreach ($candidate in @(Get-Process -Name Codalgora, java, javaw -ErrorAction SilentlyContinue)) {
+            $candidate.Refresh()
+            if ($candidate.MainWindowTitle -like 'Codalgora*') {
+                $windowTitle = $candidate.MainWindowTitle
+                break
+            }
+        }
+        if (!$windowTitle) { Start-Sleep -Milliseconds 100 }
+    }
+    if (!$windowTitle) { throw 'Installed application did not show a Codalgora window title' }
+    Write-Output "CODALGORA_WINDOWS_WINDOW_OK: $windowTitle"
     if (!$app.WaitForExit(30000)) {
         Stop-Process -Id $app.Id -Force
         throw 'Installed application timed out'
