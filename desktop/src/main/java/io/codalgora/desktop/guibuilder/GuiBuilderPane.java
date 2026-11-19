@@ -315,8 +315,8 @@ public final class GuiBuilderPane extends BorderPane {
       status.setText("O formulário atingiu o limite de " + MAX_ELEMENTS + " componentes.");
       return false;
     }
-    double width = type == GuiForm.Type.LABEL ? 180 : 160;
-    double height = type == GuiForm.Type.LABEL ? 34 : 38;
+    double width = type == GuiForm.Type.LABEL ? 180 : type == GuiForm.Type.TEXT_AREA ? 240 : 160;
+    double height = type == GuiForm.Type.TEXT_AREA ? 96 : type == GuiForm.Type.LABEL ? 34 : 38;
     if (!Double.isFinite(x) || !Double.isFinite(y)) {
       int index = form.elements.size();
       x = 24 + (index % 2) * 196;
@@ -410,6 +410,16 @@ public final class GuiBuilderPane extends BorderPane {
                 + "-fx-border-color: #8c969f; -fx-border-radius: 3; -fx-background-radius: 3;");
         yield field;
       }
+      case TEXT_AREA -> {
+        TextArea area = new TextArea();
+        area.setPromptText(element.text);
+        area.setWrapText(true);
+        area.setStyle(
+            "-fx-control-inner-background: white; -fx-background-color: white; "
+                + "-fx-text-fill: #20262d; -fx-prompt-text-fill: #687480; "
+                + "-fx-border-color: #8c969f; -fx-border-radius: 3; -fx-background-radius: 3;");
+        yield area;
+      }
       case CHECK_BOX -> new CheckBox(element.text);
     };
   }
@@ -439,9 +449,14 @@ public final class GuiBuilderPane extends BorderPane {
               ? "Componente selecionado · " + selected.type.label
               : "Componente selecionado");
       if (!hasSelection) return;
-      boolean button = selected.type == GuiForm.Type.BUTTON;
-      eventProperty.setVisible(button);
-      eventProperty.setManaged(button);
+      boolean supportsEvent =
+          selected.type == GuiForm.Type.BUTTON
+              || selected.type == GuiForm.Type.TEXT_FIELD
+              || selected.type == GuiForm.Type.CHECK_BOX;
+      eventProperty.setVisible(supportsEvent);
+      eventProperty.setManaged(supportsEvent);
+      ((Label) eventProperty.getChildren().getFirst())
+          .setText(selected.type == GuiForm.Type.TEXT_FIELD ? "Ao pressionar Enter" : "Ao ativar");
       eventField.setDisable(eventRoutines.isEmpty() && selected.eventRoutine == null);
       eventField.getItems().setAll("— Sem ação —");
       eventField.getItems().addAll(eventRoutines);
@@ -895,20 +910,28 @@ public final class GuiBuilderPane extends BorderPane {
         region.setPrefSize(element.width, element.height);
         region.setMinSize(50, 28);
         if (element.variableName != null) boundWidgets.put(element.variableName, node);
-        if (element.eventRoutine != null && node instanceof Button button && activeSession != null) {
+        if (element.eventRoutine != null && activeSession != null) {
           String routine = element.eventRoutine;
-          button.setOnAction(
-              event ->
-                  activeSession
-                      .fire(routine, readBoundValues(boundWidgets))
-                      .whenComplete(
-                          (snapshot, failure) -> {
-                            if (failure == null && snapshot != null)
-                              Platform.runLater(() -> updateBoundWidgets(boundWidgets, snapshot.globals()));
-                            if (failure != null
-                                && rootCause(failure) instanceof IllegalStateException error)
-                              output.accept("Não foi possível executar o evento: " + error.getMessage() + "\n");
-                          }));
+          var handler =
+              (javafx.event.EventHandler<javafx.event.ActionEvent>)
+                  event ->
+                      activeSession
+                          .fire(routine, readBoundValues(boundWidgets))
+                          .whenComplete(
+                              (snapshot, failure) -> {
+                                if (failure == null && snapshot != null)
+                                  Platform.runLater(
+                                      () -> updateBoundWidgets(boundWidgets, snapshot.globals()));
+                                if (failure != null
+                                    && rootCause(failure) instanceof IllegalStateException error)
+                                  output.accept(
+                                      "Não foi possível executar o evento: "
+                                          + error.getMessage()
+                                          + "\n");
+                              });
+          if (node instanceof Button button) button.setOnAction(handler);
+          else if (node instanceof TextField field) field.setOnAction(handler);
+          else if (node instanceof CheckBox checkBox) checkBox.setOnAction(handler);
         }
         content.getChildren().add(node);
       }
@@ -955,6 +978,7 @@ public final class GuiBuilderPane extends BorderPane {
     boundWidgets.forEach(
         (name, node) -> {
           if (node instanceof TextField field) values.put(name, field.getText());
+          else if (node instanceof TextArea area) values.put(name, area.getText());
           else if (node instanceof CheckBox checkBox) values.put(name, checkBox.isSelected());
         });
     return values;
@@ -966,6 +990,7 @@ public final class GuiBuilderPane extends BorderPane {
           if (!variables.containsKey(name)) return;
           Object value = variables.get(name);
           if (node instanceof TextField field) field.setText(displayVariable(value));
+          else if (node instanceof TextArea area) area.setText(displayVariable(value));
           else if (node instanceof CheckBox checkBox && value instanceof Boolean logical)
             checkBox.setSelected(logical);
           else if (node instanceof Label label) label.setText(displayVariable(value));

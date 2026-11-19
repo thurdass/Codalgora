@@ -47,6 +47,7 @@ public final class GuiForm {
     LABEL("Texto", "Texto"),
     BUTTON("Botão", "Botão"),
     TEXT_FIELD("Campo de texto", "Digite aqui"),
+    TEXT_AREA("Área de texto", "Escreva aqui"),
     CHECK_BOX("Caixa de seleção", "Marcar opção");
 
     public final String label;
