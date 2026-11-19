@@ -70,7 +70,7 @@ O [workflow 39535004943](https://github.com/thurdass/Algora/actions/runs/3953500
 
 A automação inicial via UI Automation não detectava corretamente as janelas MSI; a verificação passou a usar janelas e controles Win32. O encerramento precisou acionar o botão Cancel, em vez de depender apenas de WM_CLOSE. Essas falhas foram do teste, não demonstraram defeito nos instaladores. As capturas finais mostram os dois assistentes; a falha específica da máquina Windows 11 do usuário não foi reproduzida no runner Windows Server 2025. O MSI direto fornece uma alternativa que evita o executável intermediário, sem atribuir uma causa não confirmada ao ambiente do usuário.
 
-![Assistente MSI capturado no Windows do CI](assets/algora-installer-windows.png)
+![Captura histórica do assistente MSI Algora v0.2.0 no Windows do CI](assets/algora-installer-windows-v0.2.0.png)
 
 ### Rebranding para Codalgora
 

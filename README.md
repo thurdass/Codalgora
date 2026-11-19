@@ -5,7 +5,7 @@
 ![Java 21](https://img.shields.io/badge/Java-21-007396)
 ![Plataformas: Linux e Windows](https://img.shields.io/badge/plataformas-Linux%20%7C%20Windows-555555)
 
-> **Beta v0.2.1:** o Codalgora está em desenvolvimento ativo e pode apresentar bugs ou comportamentos inesperados. Esta versão oferece edição, execução e depuração de algoritmos em uma interface moderna.
+> **v0.2.1 em preparação:** o Codalgora está em desenvolvimento ativo e pode apresentar bugs ou comportamentos inesperados. A versão oferece edição, execução e depuração de algoritmos em uma interface moderna; seus instaladores ainda não foram publicados.
 
 <p align="center">
   <img src="docs/assets/codalgora-logo.png" alt="Logo do Codalgora" width="320">
@@ -15,7 +15,7 @@
 
 Idealizado e desenvolvido por **Arthur Almeida**, o Codalgora é um projeto pessoal criado para oferecer uma IDE moderna e acessível a estudantes de lógica de programação. Seu objetivo é unir simplicidade, aprendizado e uma experiência de desenvolvimento que acompanhe os primeiros passos na programação.
 
-**Atualmente em fase beta (v0.2.1)**, o projeto continua recebendo melhorias e correções.
+O projeto está em fase beta; a versão v0.2.1 está sendo preparada para distribuição.
 
 O projeto usa **Java 21, JavaFX 21, ANTLR4 e RichTextFX**, com **Gradle Kotlin DSL**, testes **JUnit 5** e distribuição nativa via **jpackage**.
 

@@ -64,6 +64,11 @@ jobs:
             ./desktop/packaging/tests/verify-windows-installer.ps1 -InstallerPath $installer.FullName
           }
           if ($failures.Count) { throw ($failures -join '; ') }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Generate SHA-256 checksums
+        run: python desktop/packaging/create-checksums.py desktop/build/jpackage/installer
       - uses: actions/upload-artifact@v4
         if: always() && runner.os == 'Windows'
         with:
