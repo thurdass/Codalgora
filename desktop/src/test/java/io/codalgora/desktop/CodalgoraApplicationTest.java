@@ -112,7 +112,11 @@ class CodalgoraApplicationTest {
   }
 
   private void capture(String name) throws Exception {
-    var image = stage.getScene().snapshot(null);
+    captureStage(stage, name);
+  }
+
+  private void captureStage(Stage target, String name) throws Exception {
+    var image = target.getScene().snapshot(null);
     int width = (int) image.getWidth(), height = (int) image.getHeight();
     int[] pixels = new int[width * height];
     image
@@ -249,6 +253,54 @@ class CodalgoraApplicationTest {
           assertEquals("escreval", node("codeEditor", CodeArea.class).getText());
           stage.getScene().getAccelerators().get(new KeyCodeCombination(KeyCode.F9)).run();
           assertFalse(stage.getScene().getRoot().lookupAll(".breakpoint-item").isEmpty());
+          return null;
+        });
+  }
+
+  @Test
+  void visualBuilderAddsEditsAndPreviewsAForm() throws Exception {
+    Stage[] builder = new Stage[1];
+    Stage[] preview = new Stage[1];
+    fx(
+        () -> {
+          MenuBar menuBar = (MenuBar) stage.getScene().lookup(".menu-bar");
+          assertNotNull(menuBar);
+          MenuItem openBuilder = menuBar.getMenus().getFirst().getItems().stream()
+              .filter(item -> item.getText() != null && item.getText().startsWith("Construtor visual"))
+              .findFirst().orElseThrow();
+          openBuilder.fire();
+          builder[0] = Window.getWindows().stream()
+              .filter(window -> window instanceof Stage candidate
+                  && candidate.getTitle().startsWith("Construtor visual"))
+              .map(Stage.class::cast).findFirst().orElseThrow();
+          builder[0].getScene().getRoot().applyCss();
+          ((Button) builder[0].getScene().lookup("#palette-LABEL")).fire();
+          javafx.scene.layout.Pane canvas =
+              (javafx.scene.layout.Pane) builder[0].getScene().lookup("#guiCanvas");
+          assertEquals(1, canvas.getChildren().size());
+          TextField text = (TextField) builder[0].getScene().lookup("#guiText");
+          text.setText("Olá, estudante!");
+          text.fireEvent(new ActionEvent());
+          assertEquals("Olá, estudante!", ((Label) canvas.getChildren().getFirst()).getText());
+          ((Button) builder[0].getScene().lookup("#palette-TEXT_FIELD")).fire();
+          ((Button) builder[0].getScene().lookup("#palette-BUTTON")).fire();
+          assertEquals(3, canvas.getChildren().size());
+          builder[0].getScene().getRoot().applyCss();
+          builder[0].getScene().getRoot().layout();
+          captureStage(builder[0], "Codalgora-GUI-Builder.png");
+          ((Button) builder[0].getScene().lookup("#guiPreview")).fire();
+          preview[0] = Window.getWindows().stream()
+              .filter(window -> window instanceof Stage candidate
+                  && candidate.getTitle().equals("Minha primeira interface"))
+              .map(Stage.class::cast).findFirst().orElseThrow();
+          assertEquals(3, ((javafx.scene.layout.Pane) preview[0].getScene().getRoot()).getChildren().size());
+          return null;
+        });
+    assertNotNull(preview[0]);
+    fx(
+        () -> {
+          preview[0].hide();
+          builder[0].hide();
           return null;
         });
   }

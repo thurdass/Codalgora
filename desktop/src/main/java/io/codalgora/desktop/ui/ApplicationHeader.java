@@ -4,6 +4,7 @@ import static io.codalgora.desktop.ui.components.IdeControls.*;
 
 import io.codalgora.desktop.documents.DocumentManager;
 import io.codalgora.desktop.documents.EditorDocument;
+import io.codalgora.desktop.guibuilder.GuiBuilderPane;
 import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -24,6 +25,7 @@ public final class ApplicationHeader {
       Stage stage,
       DocumentManager documentManager,
       BooleanSupplier running,
+      Runnable openGuiBuilder,
       Runnable toggleFiles,
       Runnable toggleInspector,
       Menu themes,
@@ -53,7 +55,9 @@ public final class ApplicationHeader {
     save.setOnAction(e -> documentManager.save(documentManager.active(), false));
     MenuItem saveAs = new MenuItem("Salvar como…");
     saveAs.setOnAction(e -> documentManager.save(documentManager.active(), true));
-    file.getItems().addAll(fresh, open, save, saveAs);
+    MenuItem guiBuilder = new MenuItem("Construtor visual…");
+    guiBuilder.setOnAction(e -> openGuiBuilder.run());
+    file.getItems().addAll(fresh, open, save, saveAs, new SeparatorMenuItem(), guiBuilder);
     Menu edit = new Menu("Editar");
     for (String command : List.of("Desfazer", "Refazer", "Copiar", "Colar", "Selecionar tudo")) {
       MenuItem item = new MenuItem(command);

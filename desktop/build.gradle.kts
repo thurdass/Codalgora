@@ -6,6 +6,7 @@ val javafxVersion = "21.0.13"
 dependencies {
     implementation(project(":interpreter"))
     implementation("org.fxmisc.richtext:richtextfx:0.11.7")
+    implementation("com.google.code.gson:gson:2.11.0")
     for (module in listOf("base", "graphics", "controls")) {
         implementation("org.openjfx:javafx-$module:$javafxVersion:$javafxPlatform")
     }

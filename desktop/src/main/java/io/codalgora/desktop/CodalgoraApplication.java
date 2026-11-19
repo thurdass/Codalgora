@@ -4,6 +4,7 @@ import io.codalgora.desktop.debug.DebuggerPane;
 import io.codalgora.desktop.documents.DocumentManager;
 import io.codalgora.desktop.documents.EditorDocument;
 import io.codalgora.desktop.execution.ExecutionController;
+import io.codalgora.desktop.guibuilder.GuiBuilderPane;
 import io.codalgora.desktop.terminal.TerminalPane;
 import io.codalgora.desktop.ui.ApplicationHeader;
 import io.codalgora.desktop.ui.StatusBar;
@@ -82,6 +83,10 @@ public final class CodalgoraApplication extends Application {
             stage,
             documentManager,
             execution::isRunning,
+            () -> GuiBuilderPane.open(
+                stage,
+                Objects.requireNonNull(getClass().getResource("codalgora.css")).toExternalForm(),
+                EditorTheme.saved().css()),
             () -> workspace.toggleFiles(),
             () -> workspace.toggleInspector(),
             themeMenu(),
