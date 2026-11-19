@@ -34,6 +34,14 @@ No terminal do repositório, gere um ZIP para a plataforma atual (Linux, Windows
 
 O arquivo fica em `desktop/build/distributions/codalgora-visual-app.zip`. Ele inclui o runtime da plataforma atual, o formulário, o algoritmo e scripts `Executar.sh`/`Executar.bat`. A exportação usa `jpackage` do JDK 21 instalado no computador. Cada sistema precisa gerar seu próprio pacote.
 
+## Validação manual do pacote Linux
+
+Em 19/11/2026, o pacote `codalgora-visual-app.zip` foi extraído em `/tmp/codalgora-gui-test` e iniciado por `./Executar.sh` em um desktop Linux com sessão gráfica. O usuário confirmou a abertura da aplicação JavaFX fora da IDE e quatro ativações do botão; o terminal exibiu `1`, `2`, `3`, `4`. Isso verifica o caminho básico do lançador empacotado até o evento Portugol e a manutenção do contador entre eventos nessa execução.
+
+Durante a inicialização foi observado o aviso `Unsupported JavaFX configuration: classes were loaded from 'unnamed module'`. O pacote atual é produzido com `jpackage --input` e `--main-jar`, enquanto as dependências JavaFX entram no classpath; por isso o runtime encontra JavaFX no módulo sem nome. O aviso não impediu o teste manual. Removê-lo exigiria avaliar uma distribuição modular (module path e descritores de módulos para a aplicação e dependências); não foi aplicado um ajuste de flags que apenas ocultasse o aviso. A migração modular permanece uma investigação separada.
+
+Este teste não valida persistência após fechar e reabrir, outros componentes, cliques concorrentes, erros/cancelamento, dependências em distribuições Linux diferentes ou Windows.
+
 ## Validar localmente
 
 ```sh

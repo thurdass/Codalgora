@@ -89,3 +89,11 @@ No Windows, os runners geraram MSI e EXE. Os dois assistentes visíveis foram co
 Cada runner gerou `SHA256SUMS.txt` para seus instaladores. A publicação oficial usa os artefatos produzidos em um workflow da tag `v0.2.1`, recompõe um checksum único para o `.deb`, MSI e EXE, confere os hashes e só então cria a release. Isso mantém a release histórica `v0.2.0` inalterada.
 
 Durante a validação, uma checagem X11 testava incorretamente o texto do `xprop`; outra execução encontrou a ausência de diretórios de menu no runner headless e a falta de remoção do atalho pelo pacote Debian gerado. A verificação do ícone foi corrigida, o runner passou a preparar os diretórios padrão de menu e foi incluído um `prerm` para desregistrar o lançador. As execuções finais acima passaram com essas correções.
+
+### Teste manual do aplicativo exportado pelo GUI Builder
+
+Em 19/11/2026, o usuário testou `codalgora-visual-app.zip` em desktop Linux com sessão gráfica: extraiu em `/tmp/codalgora-gui-test`, executou `chmod +x Executar.sh` e iniciou com `./Executar.sh`. A janela JavaFX abriu fora da IDE. Quatro cliques no botão executaram o procedimento Portugol e imprimiram `1`, `2`, `3`, `4`, confirmando o fluxo básico de evento e estado global compartilhado durante a sessão. O usuário também observou o aviso JavaFX de classes carregadas do módulo sem nome; ele não bloqueou a execução.
+
+O empacotamento atual usa `jpackage` com `--input`/`--main-jar` e dependências JavaFX no classpath, o que explica o módulo sem nome. Não foi feita migração para module path: isso requer modularizar/verificar a aplicação e suas dependências, e o aviso não afetou a execução observada. Esta anotação registra o relato manual do usuário; não equivale a um teste automatizado reproduzível.
+
+**Checklist do GUI Builder:** inicialização do ZIP e execução básica de evento no Linux — verificados manualmente pelo usuário. Ainda pendentes: teste de todos os componentes, persistência após reiniciar, cliques rápidos/concorrentes, erros e cancelamento, independência em distribuições Linux diferentes e execução do pacote no Windows. A compatibilidade VisualG continua limitada ao escopo do levantamento acima; não há comparação integral automatizada com o VisualG como oráculo.
