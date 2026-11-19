@@ -11,7 +11,7 @@ Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Constru
 4. Ajuste título e dimensões da janela no inspetor.
 5. Use **Vincular algoritmo .alg** para escolher o algoritmo que contém os procedimentos dos botões.
 6. Selecione um campo de texto ou uma caixa de seleção e escolha uma variável global escalar em **Variável Portugol**. Campos de texto recebem e devolvem valores; caixas de seleção aceitam variáveis `logico`; rótulos mostram o valor após a ação.
-7. Associe um procedimento sem parâmetros: botões, caixas de seleção e listas suspensas executam ao ativar; campos de texto executam ao pressionar Enter.
+7. Associe um procedimento: botões, caixas de seleção e listas suspensas executam ao ativar; campos de texto executam ao pressionar Enter. Parâmetros precisam ter uma variável global escalar com o mesmo nome; parâmetros `var` atualizam essa variável.
 8. Use **Pré-visualizar**. O algoritmo executa o bloco principal uma vez; cada clique envia os valores dos campos vinculados, executa o procedimento e atualiza os controles com os valores globais resultantes. Os eventos são processados em sequência. `escreva` e `escreval` aparecem no terminal da IDE. Cada `leia` abre uma caixa de entrada.
 9. Salve como `*.cgui.json`; use **Abrir** para continuar depois. O caminho do `.alg` é relativo ao formulário para facilitar mover ambos juntos.
 
@@ -19,7 +19,7 @@ O formulário é um JSON versionado, separado do código Portugol, e mantém o c
 
 ## Limites atuais
 
-As opções da lista suspensa são separadas por `|` no inspetor. As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto, área de texto, lista suspensa ou caixa de seleção. O editor oferece Undo/Redo limitado ao histórico da sessão e comandos simples de organização; contêineres responsivos, múltiplas janelas e sistema completo de projetos ainda não existem. Os eventos aceitam somente procedimentos sem parâmetros; funções e procedimentos com parâmetros não aparecem como opções. A sintaxe VisualG existente foi preservada.
+As opções da lista suspensa são separadas por `|` no inspetor. As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto, área de texto, lista suspensa ou caixa de seleção. Parâmetros de eventos devem corresponder pelo nome a uma variável global escalar; referências `var` precisam ter o mesmo tipo. O editor oferece Undo/Redo limitado ao histórico da sessão, comandos simples de organização e layouts responsivos na prévia. Contêineres aninhados, múltiplas janelas e sistema completo de projetos ainda não existem. Funções não podem ser chamadas como eventos. A sintaxe VisualG existente foi preservada.
 
 ## Validar localmente
 

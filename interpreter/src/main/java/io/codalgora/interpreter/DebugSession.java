@@ -144,9 +144,9 @@ public final class DebugSession {
         return completion;
       }
       Routine routine = findRoutine(routineName);
-      if (routine == null || routine.function() || !routine.parameters().isEmpty()) {
+      if (routine == null || routine.function()) {
         completion.completeExceptionally(new IllegalArgumentException(
-            "O evento precisa apontar para um procedimento existente sem parâmetros"));
+            "O evento precisa apontar para um procedimento existente"));
         return completion;
       }
       Map<String, Object> values = new LinkedHashMap<>();
@@ -163,6 +163,16 @@ public final class DebugSession {
           return completion;
         }
         values.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue());
+      }
+      for (Parameter parameter : routine.parameters()) {
+        Cell global = scopes.getFirst().get(parameter.name());
+        if (global == null || !global.ranges.isEmpty()
+            || parameter.reference() && global.constant) {
+          completion.completeExceptionally(
+              new IllegalArgumentException(
+                  "Associe uma variável global escalar chamada '" + parameter.name() + "' ao parâmetro."));
+          return completion;
+        }
       }
       if (!invocations.offer(new Invocation(routine.name(), Map.copyOf(values), completion)))
         completion.completeExceptionally(new IllegalStateException("Muitos eventos aguardando execução"));
@@ -185,7 +195,7 @@ public final class DebugSession {
       stepBudgetStart = steps;
       try {
         applyBindings(invocation.bindings());
-        invokeProcedure(invocation.routine());
+        invokeProcedure(invocation.routine(), invocation.bindings());
         check();
         publish();
         invocation.completion().complete(latest);
@@ -206,12 +216,25 @@ public final class DebugSession {
     }
   }
 
-  private void invokeProcedure(String name) {
+  private void invokeProcedure(String name, Map<String, Object> bindings) {
     Routine routine = findRoutine(name);
-    if (routine == null || routine.function() || !routine.parameters().isEmpty())
+    if (routine == null || routine.function())
       throw error("Procedimento de evento inválido: " + name);
     if (depth >= maxDepth) throw error("Limite de chamadas excedido");
     Map<String, Cell> local = new LinkedHashMap<>();
+    for (Parameter parameter : routine.parameters()) {
+      Cell global = scopes.getFirst().get(parameter.name());
+      if (global == null || !global.ranges.isEmpty())
+        throw error("Variável global escalar não encontrada para o parâmetro " + parameter.name());
+      if (parameter.reference()) {
+        if (global.constant) throw error("Uma constante não pode ser passada por referência");
+        local.put(parameter.name(), global);
+      } else {
+        local.put(
+            parameter.name(),
+            new Cell(convert(global.value, parameter.type()), parameter.type(), List.of(), false));
+      }
+    }
     scopes.add(local);
     depth++;
     try {

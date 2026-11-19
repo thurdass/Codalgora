@@ -271,7 +271,7 @@ class CodalgoraApplicationTest {
             + "var\n"
             + "total:inteiro\n"
             + "nome:caractere\n"
-            + "procedimento incrementar\n"
+            + "procedimento incrementar(var total:inteiro)\n"
             + "inicio\n"
             + "total <- total + 1\n"
             + "escreval(\"clique \", total, \" \", nome)\n"

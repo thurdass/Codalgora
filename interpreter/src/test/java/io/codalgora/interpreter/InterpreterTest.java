@@ -396,4 +396,22 @@ final class InterpreterTest {
     session.stop();
     assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
   }
+
+  @Test
+  void interactiveProcedureParametersUseNamedGlobalBindings() throws Exception {
+    String source =
+        "algoritmo \"parametros visuais\"\n"
+            + "var\ncontador:inteiro\n"
+            + "procedimento avancar(var contador:inteiro)\n"
+            + "inicio\ncontador <- contador + 1\nfimprocedimento\n"
+            + "inicio\ncontador <- 0\nfimalgoritmo\n";
+    DebugSession session = CodalgoraEngine.createInteractiveSession(source, null, null, null);
+    CompletableFuture<Snapshot> stopped = session.startInteractive(false);
+
+    Snapshot result = session.fire("avancar", Map.of("contador", "40")).get(5, TimeUnit.SECONDS);
+
+    assertEquals(41.0, result.globals().get("contador"));
+    session.stop();
+    assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
+  }
 }

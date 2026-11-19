@@ -905,16 +905,25 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void refreshEventRoutines(Program program) {
-    eventRoutines.clear();
-    program.routines().stream()
-        .filter(routine -> !routine.function() && routine.parameters().isEmpty())
-        .map(routine -> routine.name().toLowerCase(Locale.ROOT))
-        .distinct()
-        .forEach(eventRoutines::add);
     globalVariables.clear();
     program.declarations().stream()
         .filter(declaration -> declaration.constant() == null && declaration.ranges().isEmpty())
         .forEach(declaration -> globalVariables.put(declaration.name(), declaration.type()));
+    eventRoutines.clear();
+    program.routines().stream()
+        .filter(routine -> !routine.function())
+        .filter(
+            routine ->
+                routine.parameters().stream()
+                    .allMatch(
+                        parameter -> {
+                          String type = globalVariables.get(parameter.name());
+                          return type != null
+                              && (!parameter.reference() || type.equals(parameter.type()));
+                        }))
+        .map(routine -> routine.name().toLowerCase(Locale.ROOT))
+        .distinct()
+        .forEach(eventRoutines::add);
   }
 
   private String relativeAlgorithmPath(Path formFile, Path linkedAlgorithm) {
@@ -958,18 +967,13 @@ public final class GuiBuilderPane extends BorderPane {
               "O arquivo .alg vinculado não foi encontrado. Vincule-o novamente.");
         algorithmSource = Files.readString(sourcePath, StandardCharsets.UTF_8);
         Program program = CodalgoraEngine.parse(algorithmSource);
-        List<String> procedures =
-            program.routines().stream()
-                .filter(routine -> !routine.function() && routine.parameters().isEmpty())
-                .map(routine -> routine.name().toLowerCase(Locale.ROOT))
-                .distinct()
-                .toList();
+        refreshEventRoutines(program);
+        List<String> procedures = List.copyOf(eventRoutines);
         for (GuiForm.Element element : form.elements)
           if (element.eventRoutine != null
               && !procedures.contains(element.eventRoutine.toLowerCase(Locale.ROOT)))
             throw new IllegalArgumentException(
                 "O procedimento '" + element.eventRoutine + "' não existe no algoritmo vinculado.");
-        refreshEventRoutines(program);
         validateVariableBindings();
         render();
       }
