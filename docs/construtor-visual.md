@@ -19,7 +19,7 @@ O formulário é um JSON versionado, separado do código Portugol, e mantém o c
 
 ## Limites atuais
 
-As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto ou caixa de seleção. Também não há Undo/Redo, contêineres de layout, múltiplas janelas nem sistema completo de projetos. Os eventos aceitam somente procedimentos sem parâmetros; funções e procedimentos com parâmetros não aparecem como opções. A sintaxe VisualG existente foi preservada.
+As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto ou caixa de seleção. O editor já oferece Undo/Redo limitado ao histórico da sessão; contêineres de layout, múltiplas janelas e sistema completo de projetos ainda não existem. Os eventos aceitam somente procedimentos sem parâmetros; funções e procedimentos com parâmetros não aparecem como opções. A sintaxe VisualG existente foi preservada.
 
 ## Validar localmente
 

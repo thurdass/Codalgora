@@ -52,7 +52,9 @@ public final class GuiBuilderPane extends BorderPane {
   private final ComboBox<String> variableField = new ComboBox<>();
   private final List<String> eventRoutines = new ArrayList<>();
   private final Map<String, String> globalVariables = new LinkedHashMap<>();
+  private final List<String> history = new ArrayList<>();
   private Label componentHeading;
+  private Button undoButton, redoButton;
   private TextField formTitleField, formWidthField, formHeightField;
   private TextField nameField, textField, xField, yField, widthField, heightField;
   private GuiForm.Element selected;
@@ -60,12 +62,15 @@ public final class GuiBuilderPane extends BorderPane {
   private Path algorithmFile;
   private boolean rendering;
   private boolean updatingInspector;
+  private boolean restoringHistory;
+  private int historyIndex;
 
   private GuiBuilderPane(Stage owner, String stylesheet, String themeCss, Consumer<String> output) {
     this.owner = owner;
     this.stylesheet = stylesheet;
     this.themeCss = themeCss;
     this.output = output == null ? ignored -> {} : output;
+    history.add(savedSnapshot);
     getStyleClass().add("gui-builder");
     setTop(toolbar());
     setLeft(palette());
@@ -102,6 +107,12 @@ public final class GuiBuilderPane extends BorderPane {
     save.setId("guiSave");
     save.getStyleClass().add("run-button");
     save.setOnAction(e -> save());
+    undoButton = new Button("Desfazer");
+    undoButton.setId("guiUndo");
+    undoButton.setOnAction(e -> undo());
+    redoButton = new Button("Refazer");
+    redoButton.setId("guiRedo");
+    redoButton.setOnAction(e -> redo());
     Button open = new Button("Abrir");
     open.setId("guiOpen");
     open.setOnAction(e -> open());
@@ -116,7 +127,8 @@ public final class GuiBuilderPane extends BorderPane {
     link.setOnAction(e -> linkAlgorithm());
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
-    HBox bar = new HBox(8, open, save, link, delete, spacer, preview);
+    HBox bar = new HBox(8, open, save, undoButton, redoButton, link, delete, spacer, preview);
+    updateHistoryButtons();
     bar.getStyleClass().add("editor-toolbar");
     return bar;
   }
@@ -614,8 +626,10 @@ public final class GuiBuilderPane extends BorderPane {
       GuiFormStore.write(destination, form);
       file = destination;
       savedSnapshot = GuiFormStore.serialize(form);
+      history.set(historyIndex, savedSnapshot);
       status.setText("Salvo em " + file.getFileName());
       owner.setTitle("Construtor visual — Codalgora");
+      updateHistoryButtons();
     } catch (IOException | RuntimeException ex) {
       form.algorithmPath = previousAlgorithmPath;
       throw ex;
@@ -658,6 +672,9 @@ public final class GuiBuilderPane extends BorderPane {
     file = formPath;
     algorithmFile = linkedAlgorithm;
     savedSnapshot = GuiFormStore.serialize(form);
+    history.clear();
+    history.add(savedSnapshot);
+    historyIndex = 0;
     selected = null;
     render();
     status.setText(
@@ -665,12 +682,69 @@ public final class GuiBuilderPane extends BorderPane {
             + file.getFileName()
             + (algorithmNotice == null ? "" : algorithmNotice));
     owner.setTitle("Construtor visual — Codalgora");
+    updateHistoryButtons();
   }
 
   private void markChanged(String message) {
-    boolean dirty = !GuiFormStore.serialize(form).equals(savedSnapshot);
+    String current = GuiFormStore.serialize(form);
+    if (!restoringHistory && !history.get(historyIndex).equals(current)) {
+      while (history.size() > historyIndex + 1) history.removeLast();
+      history.add(current);
+      historyIndex++;
+      if (history.size() > 100) {
+        history.removeFirst();
+        historyIndex--;
+      }
+      updateHistoryButtons();
+    }
+    boolean dirty = !current.equals(savedSnapshot);
     status.setText(dirty ? message + "  ·  Alterações não salvas" : message);
     owner.setTitle("Construtor visual — Codalgora" + (dirty ? " *" : ""));
+  }
+
+  private void undo() {
+    if (historyIndex == 0) return;
+    historyIndex--;
+    restoreHistory();
+  }
+
+  private void redo() {
+    if (historyIndex >= history.size() - 1) return;
+    historyIndex++;
+    restoreHistory();
+  }
+
+  private void restoreHistory() {
+    restoringHistory = true;
+    try {
+      GuiForm restored = GuiFormStore.deserialize(history.get(historyIndex));
+      form.schemaVersion = restored.schemaVersion;
+      form.title = restored.title;
+      form.width = restored.width;
+      form.height = restored.height;
+      form.algorithmPath = restored.algorithmPath;
+      form.elements = restored.elements;
+      selected = null;
+      algorithmFile = resolveAlgorithmPath(form.algorithmPath, file);
+      eventRoutines.clear();
+      globalVariables.clear();
+      if (algorithmFile != null && Files.isRegularFile(algorithmFile))
+        refreshEventRoutines(Files.readString(algorithmFile, StandardCharsets.UTF_8));
+      render();
+      boolean dirty = !GuiFormStore.serialize(form).equals(savedSnapshot);
+      status.setText(dirty ? "Edição restaurada.  ·  Alterações não salvas" : "Edição restaurada.");
+      owner.setTitle("Construtor visual — Codalgora" + (dirty ? " *" : ""));
+    } catch (IOException | RuntimeException ex) {
+      showError("Não foi possível restaurar a edição", ex);
+    } finally {
+      restoringHistory = false;
+      updateHistoryButtons();
+    }
+  }
+
+  private void updateHistoryButtons() {
+    if (undoButton != null) undoButton.setDisable(historyIndex <= 0);
+    if (redoButton != null) redoButton.setDisable(historyIndex >= history.size() - 1);
   }
 
   private boolean confirmDiscard() {

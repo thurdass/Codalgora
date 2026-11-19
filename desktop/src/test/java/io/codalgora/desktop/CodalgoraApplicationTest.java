@@ -310,6 +310,10 @@ class CodalgoraApplicationTest {
           ((Button) builder[0].getScene().lookup("#palette-TEXT_FIELD")).fire();
           ((Button) builder[0].getScene().lookup("#palette-BUTTON")).fire();
           assertEquals(3, canvas.getChildren().size());
+          ((Button) builder[0].getScene().lookup("#guiUndo")).fire();
+          assertEquals(2, canvas.getChildren().size());
+          ((Button) builder[0].getScene().lookup("#guiRedo")).fire();
+          assertEquals(3, canvas.getChildren().size());
           GuiBuilderPane pane = (GuiBuilderPane) builder[0].getScene().getRoot();
           pane.linkAlgorithm(algorithm);
           ListView<?> outline = (ListView<?>) builder[0].getScene().lookup("#guiOutline");
