@@ -6,7 +6,7 @@ Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Constru
 ## Fluxo rápido
 
 1. Escolha Texto, Botão, Campo de texto, Área de texto, Caixa de seleção ou Lista suspensa na paleta, ou arraste o item para a área branca.
-2. Arraste o componente no canvas; a posição acompanha uma grade de 8 pixels. Segure Shift enquanto arrasta para redimensioná-lo. **Organizar** distribui os componentes em coluna ou em uma grade de duas ou três colunas.
+2. Arraste o componente no canvas; a posição acompanha uma grade de 8 pixels. Segure Shift enquanto arrasta para redimensioná-lo. **Organizar** distribui os componentes em coluna ou em uma grade de duas ou três colunas. Em **Organização da prévia**, escolha Livre, Coluna responsiva ou Grade responsiva.
 3. Selecione o componente na tela ou na lista lateral e edite nome, texto, posição e tamanho.
 4. Ajuste título e dimensões da janela no inspetor.
 5. Use **Vincular algoritmo .alg** para escolher o algoritmo que contém os procedimentos dos botões.

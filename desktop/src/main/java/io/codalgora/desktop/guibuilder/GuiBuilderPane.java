@@ -56,6 +56,7 @@ public final class GuiBuilderPane extends BorderPane {
   private Label componentHeading;
   private Button undoButton, redoButton;
   private TextField formTitleField, formWidthField, formHeightField;
+  private ComboBox<GuiForm.LayoutMode> formLayoutField;
   private TextField nameField, textField, xField, yField, widthField, heightField;
   private GuiForm.Element selected;
   private Path file;
@@ -226,10 +227,42 @@ public final class GuiBuilderPane extends BorderPane {
     formTitleField = field();
     formWidthField = field();
     formHeightField = field();
+    formLayoutField = new ComboBox<>();
+    formLayoutField.setId("guiLayoutMode");
+    formLayoutField.getItems().setAll(GuiForm.LayoutMode.values());
+    formLayoutField.setMaxWidth(Double.MAX_VALUE);
+    formLayoutField.setCellFactory(
+        view ->
+            new ListCell<>() {
+              @Override
+              protected void updateItem(GuiForm.LayoutMode item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : item.label);
+              }
+            });
+    formLayoutField.setButtonCell(
+        new ListCell<>() {
+          @Override
+          protected void updateItem(GuiForm.LayoutMode item, boolean empty) {
+            super.updateItem(item, empty);
+            setText(empty || item == null ? null : item.label);
+          }
+        });
+    formLayoutField.setOnAction(
+        event -> {
+          if (!updatingInspector && formLayoutField.getValue() != null
+              && form.layout != formLayoutField.getValue()) {
+            form.layout = formLayoutField.getValue();
+            markChanged("Layout responsivo atualizado.");
+          }
+        });
     box.getChildren().addAll(heading, new Separator());
     addProperty(box, "Título da janela", formTitleField);
     addProperty(box, "Largura da janela", formWidthField);
     addProperty(box, "Altura da janela", formHeightField);
+    Label layoutLabel = new Label("Organização da prévia");
+    layoutLabel.getStyleClass().add("subtle");
+    box.getChildren().addAll(layoutLabel, formLayoutField);
     componentHeading = new Label("Componente selecionado");
     componentHeading.getStyleClass().add("section-heading");
     box.getChildren().add(componentHeading);
@@ -464,6 +497,7 @@ public final class GuiBuilderPane extends BorderPane {
       formTitleField.setText(form.title);
       formWidthField.setText(number(form.width));
       formHeightField.setText(number(form.height));
+      formLayoutField.setValue(form.layout);
       boolean hasSelection = selected != null;
       inspector.setVisible(hasSelection);
       inspector.setManaged(hasSelection);
@@ -730,6 +764,7 @@ public final class GuiBuilderPane extends BorderPane {
     form.title = loaded.title;
     form.width = loaded.width;
     form.height = loaded.height;
+    form.layout = loaded.layout;
     form.algorithmPath = loaded.algorithmPath;
     form.elements = loaded.elements;
     file = formPath;
@@ -785,6 +820,7 @@ public final class GuiBuilderPane extends BorderPane {
       form.title = restored.title;
       form.width = restored.width;
       form.height = restored.height;
+      form.layout = restored.layout;
       form.algorithmPath = restored.algorithmPath;
       form.elements = restored.elements;
       selected = null;
@@ -945,18 +981,51 @@ public final class GuiBuilderPane extends BorderPane {
             source, () -> requestInput(preview), output, ignored -> {});
       }
       DebugSession activeSession = session;
-      Pane content = new Pane();
+      Region content =
+          switch (form.layout) {
+            case FREE -> new Pane();
+            case VERTICAL -> new VBox(12);
+            case GRID -> new GridPane();
+          };
       Map<String, Node> boundWidgets = new LinkedHashMap<>();
       content.setPrefSize(form.width, form.height);
       content.setMinSize(form.width, form.height);
+      content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
       content.getStyleClass().add("gui-preview-canvas");
+      if (content instanceof VBox column) {
+        column.setPadding(new Insets(16));
+        column.setFillWidth(true);
+      }
+      if (content instanceof GridPane grid) {
+        grid.setPadding(new Insets(16));
+        grid.setHgap(12);
+        grid.setVgap(12);
+        for (int i = 0; i < 2; i++) {
+          ColumnConstraints constraint = new ColumnConstraints();
+          constraint.setPercentWidth(50);
+          constraint.setHgrow(Priority.ALWAYS);
+          grid.getColumnConstraints().add(constraint);
+        }
+      }
+      int gridRow = 0;
       for (GuiForm.Element element : form.elements) {
         Node node = widget(element);
-        node.setLayoutX(element.x);
-        node.setLayoutY(element.y);
         Region region = (Region) node;
         region.setPrefSize(element.width, element.height);
         region.setMinSize(50, 28);
+        if (form.layout == GuiForm.LayoutMode.FREE) {
+          node.setLayoutX(element.x);
+          node.setLayoutY(element.y);
+        } else {
+          region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+          if (content instanceof VBox column) VBox.setVgrow(node, Priority.NEVER);
+          if (content instanceof GridPane grid) {
+            GridPane.setHgrow(node, Priority.ALWAYS);
+            GridPane.setFillWidth(node, true);
+            grid.add(node, gridRow % 2, gridRow / 2);
+            gridRow++;
+          } else if (content instanceof VBox column) column.getChildren().add(node);
+        }
         if (element.variableName != null) boundWidgets.put(element.variableName, node);
         if (element.eventRoutine != null && activeSession != null) {
           String routine = element.eventRoutine;
@@ -984,7 +1053,8 @@ public final class GuiBuilderPane extends BorderPane {
           else if (node instanceof CheckBox checkBox) checkBox.setOnAction(handler);
           else if (node instanceof ComboBox<?> choices) choices.setOnAction(handler);
         }
-        content.getChildren().add(node);
+        if (content instanceof Pane pane && form.layout == GuiForm.LayoutMode.FREE)
+          pane.getChildren().add(node);
       }
       preview.setTitle(form.title);
       Scene scene = new Scene(content, form.width, form.height);

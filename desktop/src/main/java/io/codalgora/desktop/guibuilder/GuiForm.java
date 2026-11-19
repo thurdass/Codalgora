@@ -10,6 +10,7 @@ public final class GuiForm {
   public String title = "Minha primeira interface";
   public double width = 420;
   public double height = 520;
+  public LayoutMode layout = LayoutMode.FREE;
   public String algorithmPath;
   public List<Element> elements = new ArrayList<>();
 
@@ -57,6 +58,18 @@ public final class GuiForm {
     Type(String label, String defaultText) {
       this.label = label;
       this.defaultText = defaultText;
+    }
+  }
+
+  public enum LayoutMode {
+    FREE("Livre"),
+    VERTICAL("Coluna responsiva"),
+    GRID("Grade responsiva");
+
+    public final String label;
+
+    LayoutMode(String label) {
+      this.label = label;
     }
   }
 }

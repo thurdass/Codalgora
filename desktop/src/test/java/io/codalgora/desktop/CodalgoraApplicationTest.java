@@ -3,6 +3,7 @@ package io.codalgora.desktop;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.codalgora.desktop.guibuilder.GuiBuilderPane;
+import io.codalgora.desktop.guibuilder.GuiForm;
 import java.awt.image.BufferedImage;
 import java.nio.file.*;
 import java.util.concurrent.*;
@@ -336,6 +337,12 @@ class CodalgoraApplicationTest {
           pane.saveForm(formFile);
           pane.loadForm(formFile);
           assertTrue(Files.readString(formFile).contains("\"variableName\": \"nome\""));
+          ComboBox<GuiForm.LayoutMode> layout =
+              (ComboBox<GuiForm.LayoutMode>) builder[0].getScene().lookup("#guiLayoutMode");
+          layout.setValue(GuiForm.LayoutMode.GRID);
+          layout.fireEvent(new ActionEvent());
+          pane.saveForm(formFile);
+          pane.loadForm(formFile);
           builder[0].getScene().getRoot().applyCss();
           builder[0].getScene().getRoot().layout();
           captureStage(builder[0], "Codalgora-GUI-Builder.png");
@@ -345,6 +352,7 @@ class CodalgoraApplicationTest {
                   && candidate.getTitle().equals("Minha primeira interface"))
               .map(Stage.class::cast).findFirst().orElseThrow();
           assertEquals(4, ((javafx.scene.layout.Pane) preview[0].getScene().getRoot()).getChildren().size());
+          assertInstanceOf(javafx.scene.layout.GridPane.class, preview[0].getScene().getRoot());
           return null;
         });
     assertNotNull(preview[0]);
