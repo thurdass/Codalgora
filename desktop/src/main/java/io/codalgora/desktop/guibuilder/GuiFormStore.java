@@ -65,6 +65,32 @@ public final class GuiFormStore {
         throw new IllegalArgumentException("O campo obrigatório '" + field + "' não foi informado.");
   }
 
+  public static GuiForm.Element copyElement(GuiForm.Element element) {
+    return JSON.fromJson(JSON.toJson(element), GuiForm.Element.class);
+  }
+
+  public static void validateAppearance(GuiForm.Appearance style) {
+    if (style == null || style.alignment == null || style.fontFamily == null
+        || !style.fontFamily.matches("[\\p{L}\\p{N} _.-]{1,80}"))
+      throw new IllegalArgumentException("Fonte ou alinhamento inválido.");
+    range(style.fontSize, 8, 96, "Tamanho da fonte");
+    range(style.borderWidth, 0, 12, "Borda");
+    range(style.radius, 0, 64, "Arredondamento");
+    range(style.padding, 0, 64, "Preenchimento");
+    range(style.opacity, 0, 1, "Opacidade");
+    for (GuiForm.Colors colors : new GuiForm.Colors[] {style.normal, style.hover, style.pressed, style.disabled}) {
+      if (colors == null) throw new IllegalArgumentException("Estado visual inválido.");
+      for (String value : new String[] {colors.background, colors.foreground, colors.border})
+        if (value != null && !value.matches("#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?"))
+          throw new IllegalArgumentException("Use cores hexadecimais #RRGGBB ou #RRGGBBAA.");
+    }
+  }
+
+  private static void range(double value, double min, double max, String label) {
+    if (!Double.isFinite(value) || value < min || value > max)
+      throw new IllegalArgumentException(label + " fora dos limites.");
+  }
+
   public static void validate(GuiForm form) {
     if (form == null || form.schemaVersion != 1)
       throw new IllegalArgumentException("Versão de formulário ausente ou não suportada.");
@@ -78,6 +104,9 @@ public final class GuiFormStore {
       throw new IllegalArgumentException("O formulário precisa ter até " + MAX_ELEMENTS + " componentes.");
     if (form.algorithmPath != null && form.algorithmPath.length() > 1000)
       throw new IllegalArgumentException("O caminho do algoritmo é longo demais.");
+    if (form.layout == null) throw new IllegalArgumentException("Layout desconhecido.");
+    range(form.spacing, 0, 64, "Espaçamento");
+    range(form.padding, 0, 64, "Margem interna da janela");
     Set<String> ids = new HashSet<>(), names = new HashSet<>();
     Set<String> editableBindings = new HashSet<>();
     boolean hasEvent = false;
@@ -111,6 +140,7 @@ public final class GuiFormStore {
           throw new IllegalArgumentException(
               "Uma variável só pode receber entrada de um componente por vez.");
       }
+      validateAppearance(element.appearance);
       if (!Double.isFinite(element.x) || !Double.isFinite(element.y)
           || !Double.isFinite(element.width) || !Double.isFinite(element.height)
           || element.x < 0 || element.y < 0 || element.width < 50 || element.height < 28

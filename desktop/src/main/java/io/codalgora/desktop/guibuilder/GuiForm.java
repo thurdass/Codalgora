@@ -12,6 +12,8 @@ public final class GuiForm {
   public double height = 520;
   public LayoutMode layout = LayoutMode.FREE;
   public String algorithmPath;
+  public double spacing = 12;
+  public double padding = 16;
   public List<Element> elements = new ArrayList<>();
 
   public static final class Element {
@@ -21,6 +23,8 @@ public final class GuiForm {
     public String text;
     public String eventRoutine;
     public String variableName;
+    public Appearance appearance = new Appearance();
+    public boolean growWidth = true;
     public double x;
     public double y;
     public double width;
@@ -43,6 +47,20 @@ public final class GuiForm {
       return name;
     }
   }
+
+  public static final class Colors {
+    public String background, foreground, border;
+  }
+
+  public static final class Appearance {
+    public Colors normal = new Colors(), hover = new Colors(), pressed = new Colors(), disabled = new Colors();
+    public String fontFamily = "System";
+    public double fontSize = 13, borderWidth = 1, radius = 3, padding = 7, opacity = 1;
+    public boolean bold, italic;
+    public Alignment alignment = Alignment.DEFAULT;
+  }
+
+  public enum Alignment { DEFAULT, LEFT, CENTER, RIGHT }
 
   public enum Type {
     LABEL("Texto", "Texto"),
