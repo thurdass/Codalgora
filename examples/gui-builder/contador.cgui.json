@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "title": "Contador visual — Codalgora",
+  "width": 420,
+  "height": 360,
+  "layout": "VERTICAL",
+  "spacing": 16,
+  "padding": 24,
+  "algorithmPath": "contador.alg",
+  "elements": [
+    {
+      "id": "titulo", "type": "LABEL", "name": "titulo", "text": "Meu primeiro contador",
+      "x": 24, "y": 24, "width": 360, "height": 48,
+      "appearance": {"fontSize": 20, "bold": true, "alignment": "CENTER", "normal": {"foreground": "#20262d"}}
+    },
+    {
+      "id": "total", "type": "LABEL", "name": "total", "text": "0", "variableName": "total",
+      "x": 24, "y": 100, "width": 360, "height": 72,
+      "appearance": {"fontSize": 32, "bold": true, "alignment": "CENTER", "radius": 8, "normal": {"background": "#edf5fc", "foreground": "#1677c8"}}
+    },
+    {
+      "id": "somar", "type": "BUTTON", "name": "somar", "text": "Adicionar um", "eventRoutine": "somar",
+      "x": 24, "y": 200, "width": 360, "height": 52,
+      "appearance": {"fontSize": 18, "bold": true, "radius": 8, "padding": 10, "alignment": "CENTER",
+        "normal": {"background": "#1677c8", "foreground": "#ffffff", "border": "#1677c8"},
+        "hover": {"background": "#0e639f"}, "pressed": {"background": "#12436b"}}
+    }
+  ]
+}
