@@ -49,6 +49,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y x11-utils
           xvfb-run -a python3 desktop/packaging/tests/verify-linux-desktop.py
+      - name: Install, launch and uninstall Linux package
+        if: runner.os == 'Linux'
+        run: xvfb-run -a bash desktop/packaging/tests/verify-linux-package-install.sh
       - name: Install, launch and uninstall Windows package
         timeout-minutes: 5
         if: runner.os == 'Windows'
