@@ -103,6 +103,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+      - name: Confirm all platform installers are present
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          assets = Path('release-assets')
+          for pattern in ('codalgora_*_amd64.deb', 'Codalgora-*.exe', 'Codalgora-*.msi'):
+              matches = list(assets.glob(pattern))
+              if len(matches) != 1:
+                  raise SystemExit(f'Expected one {pattern}, found {len(matches)}')
+          PY
       - name: Create and verify combined SHA-256 checksums
         run: |
           python desktop/packaging/create-checksums.py release-assets
@@ -124,6 +135,14 @@ jobs:
 
           A release histórica Algora v0.2.0 permanece disponível sem alterações.
           EOF
-          gh release create "$TAG" --verify-tag \
+          gh release create "$TAG" --draft --verify-tag \
             --title "Codalgora v0.2.1 — Windows e Linux" \
-            --notes-file release-notes.md release-assets/*
+            --notes-file release-notes.md
+          gh release upload "$TAG" release-assets/*
+          expected_assets="$(find release-assets -maxdepth 1 -type f -printf '%f\n' | sort)"
+          actual_assets="$(gh release view "$TAG" --json assets --jq '.assets[].name' | sort)"
+          if [[ "$expected_assets" != "$actual_assets" ]]; then
+            echo 'Uploaded release assets do not match the validated files.' >&2
+            exit 1
+          fi
+          gh release edit "$TAG" --draft=false
