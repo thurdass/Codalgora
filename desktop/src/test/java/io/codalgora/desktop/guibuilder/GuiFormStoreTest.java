@@ -27,6 +27,40 @@ class GuiFormStoreTest {
   }
 
   @Test
+  void preservesAlgorithmAndButtonProcedureBinding() {
+    GuiForm form = new GuiForm();
+    form.algorithmPath = "../algoritmos/boas-vindas.alg";
+    GuiForm.Element button =
+        new GuiForm.Element(GuiForm.Type.BUTTON, "botaoIniciar", "Começar", 28, 64, 160, 38);
+    button.eventRoutine = "iniciar";
+    form.elements.add(button);
+    GuiForm.Element input =
+        new GuiForm.Element(GuiForm.Type.TEXT_FIELD, "campoNome", "Nome", 28, 112, 160, 38);
+    input.variableName = "nome";
+    form.elements.add(input);
+
+    GuiForm loaded = GuiFormStore.deserialize(GuiFormStore.serialize(form));
+
+    assertEquals(form.algorithmPath, loaded.algorithmPath);
+    assertEquals("iniciar", loaded.elements.getFirst().eventRoutine);
+    assertEquals("nome", loaded.elements.get(1).variableName);
+  }
+
+  @Test
+  void rejectsInvalidOrUnlinkedButtonEvents() {
+    GuiForm form = new GuiForm();
+    GuiForm.Element button =
+        new GuiForm.Element(GuiForm.Type.BUTTON, "botao", "Executar", 20, 20, 160, 38);
+    button.eventRoutine = "iniciar";
+    form.elements.add(button);
+    assertThrows(IllegalArgumentException.class, () -> GuiFormStore.validate(form));
+
+    form.algorithmPath = "programa.alg";
+    button.eventRoutine = "iniciar()";
+    assertThrows(IllegalArgumentException.class, () -> GuiFormStore.validate(form));
+  }
+
+  @Test
   void rejectsFutureSchemaAndDuplicateNames() {
     assertThrows(IllegalArgumentException.class, () -> GuiFormStore.deserialize("{\"schemaVersion\":99}"));
 

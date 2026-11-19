@@ -55,9 +55,7 @@ public final class ApplicationHeader {
     save.setOnAction(e -> documentManager.save(documentManager.active(), false));
     MenuItem saveAs = new MenuItem("Salvar como…");
     saveAs.setOnAction(e -> documentManager.save(documentManager.active(), true));
-    MenuItem guiBuilder = new MenuItem("Construtor visual…");
-    guiBuilder.setOnAction(e -> openGuiBuilder.run());
-    file.getItems().addAll(fresh, open, save, saveAs, new SeparatorMenuItem(), guiBuilder);
+    file.getItems().addAll(fresh, open, save, saveAs);
     Menu edit = new Menu("Editar");
     for (String command : List.of("Desfazer", "Refazer", "Copiar", "Colar", "Selecionar tudo")) {
       MenuItem item = new MenuItem(command);
@@ -78,6 +76,10 @@ public final class ApplicationHeader {
           });
       edit.getItems().add(item);
     }
+    Menu visualBuilder = new Menu("Construtor visual");
+    MenuItem openVisualBuilder = new MenuItem("Abrir construtor visual…");
+    openVisualBuilder.setOnAction(e -> openGuiBuilder.run());
+    visualBuilder.getItems().add(openVisualBuilder);
     Menu help = new Menu("Ajuda");
     MenuItem guide = new MenuItem("Guia rápido e atalhos");
     guide.setOnAction(e -> showGuide());
@@ -90,7 +92,7 @@ public final class ApplicationHeader {
     MenuItem showInspector = new MenuItem("Depuração");
     showInspector.setOnAction(e -> toggleInspector.run());
     display.getItems().addAll(showFiles, showInspector, new SeparatorMenuItem(), themes);
-    MenuBar menu = new MenuBar(file, edit, display, help);
+    MenuBar menu = new MenuBar(file, edit, visualBuilder, display, help);
     Region space = new Region();
     HBox.setHgrow(space, Priority.ALWAYS);
     filesToggle = iconButton("files", "Mostrar ou ocultar arquivos (Ctrl+B)", toggleFiles);

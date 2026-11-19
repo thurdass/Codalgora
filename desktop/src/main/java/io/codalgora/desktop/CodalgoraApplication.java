@@ -86,7 +86,8 @@ public final class CodalgoraApplication extends Application {
             () -> GuiBuilderPane.open(
                 stage,
                 Objects.requireNonNull(getClass().getResource("codalgora.css")).toExternalForm(),
-                EditorTheme.saved().css()),
+                EditorTheme.saved().css(),
+                terminalPane::appendOutput),
             () -> workspace.toggleFiles(),
             () -> workspace.toggleInspector(),
             themeMenu(),

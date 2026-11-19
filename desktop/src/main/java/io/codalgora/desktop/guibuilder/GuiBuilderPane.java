@@ -1,7 +1,23 @@
 package io.codalgora.desktop.guibuilder;
 
+import io.codalgora.interpreter.CodalgoraEngine;
+import io.codalgora.interpreter.DebugSession;
+import io.codalgora.interpreter.Program;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.css.PseudoClass;
@@ -23,23 +39,33 @@ public final class GuiBuilderPane extends BorderPane {
   private final Stage owner;
   private final String stylesheet;
   private final String themeCss;
+  private final Consumer<String> output;
   private final GuiForm form = new GuiForm();
   private String savedSnapshot = GuiFormStore.serialize(form);
   private final Pane canvas = new Pane();
   private final ListView<GuiForm.Element> outline = new ListView<>();
   private final VBox inspector = new VBox(10);
   private final Label status = new Label("Arraste componentes para a tela ou escolha na paleta.");
+  private final VBox eventProperty = new VBox(4);
+  private final ComboBox<String> eventField = new ComboBox<>();
+  private final VBox variableProperty = new VBox(4);
+  private final ComboBox<String> variableField = new ComboBox<>();
+  private final List<String> eventRoutines = new ArrayList<>();
+  private final Map<String, String> globalVariables = new LinkedHashMap<>();
   private Label componentHeading;
   private TextField formTitleField, formWidthField, formHeightField;
   private TextField nameField, textField, xField, yField, widthField, heightField;
   private GuiForm.Element selected;
   private Path file;
+  private Path algorithmFile;
   private boolean rendering;
+  private boolean updatingInspector;
 
-  private GuiBuilderPane(Stage owner, String stylesheet, String themeCss) {
+  private GuiBuilderPane(Stage owner, String stylesheet, String themeCss, Consumer<String> output) {
     this.owner = owner;
     this.stylesheet = stylesheet;
     this.themeCss = themeCss;
+    this.output = output == null ? ignored -> {} : output;
     getStyleClass().add("gui-builder");
     setTop(toolbar());
     setLeft(palette());
@@ -53,10 +79,10 @@ public final class GuiBuilderPane extends BorderPane {
     render();
   }
 
-  public static void open(Stage owner, String stylesheet, String themeCss) {
+  public static void open(Stage owner, String stylesheet, String themeCss, Consumer<String> output) {
     Stage stage = new Stage();
     stage.initOwner(owner);
-    GuiBuilderPane builder = new GuiBuilderPane(stage, stylesheet, themeCss);
+    GuiBuilderPane builder = new GuiBuilderPane(stage, stylesheet, themeCss, output);
     Scene scene = new Scene(builder, 1180, 760);
     scene.getStylesheets().add(stylesheet);
     scene.getRoot().setStyle(themeCss);
@@ -85,9 +111,12 @@ public final class GuiBuilderPane extends BorderPane {
     preview.setOnAction(e -> preview());
     Button delete = new Button("Remover selecionado");
     delete.setOnAction(e -> removeSelected());
+    Button link = new Button("Vincular algoritmo .alg");
+    link.setId("guiLinkAlgorithm");
+    link.setOnAction(e -> linkAlgorithm());
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
-    HBox bar = new HBox(8, open, save, delete, spacer, preview);
+    HBox bar = new HBox(8, open, save, link, delete, spacer, preview);
     bar.getStyleClass().add("editor-toolbar");
     return bar;
   }
@@ -199,6 +228,28 @@ public final class GuiBuilderPane extends BorderPane {
     addProperty(inspector, "Posição Y", yField);
     addProperty(inspector, "Largura", widthField);
     addProperty(inspector, "Altura", heightField);
+    Label eventLabel = new Label("Ao clicar");
+    eventLabel.getStyleClass().add("subtle");
+    eventField.setId("guiEventRoutine");
+    eventField.setMaxWidth(Double.MAX_VALUE);
+    eventField.setPromptText("Vincule um procedimento");
+    eventField.getItems().add("— Sem ação —");
+    eventField.getSelectionModel().selectFirst();
+    eventField.setOnAction(e -> applyEvent());
+    eventProperty.getChildren().addAll(eventLabel, eventField);
+    eventProperty.setVisible(false);
+    eventProperty.setManaged(false);
+    inspector.getChildren().add(eventProperty);
+    Label variableLabel = new Label("Variável Portugol");
+    variableLabel.getStyleClass().add("subtle");
+    variableField.setId("guiVariableName");
+    variableField.setMaxWidth(Double.MAX_VALUE);
+    variableField.setPromptText("Sem vínculo");
+    variableField.setOnAction(e -> applyVariable());
+    variableProperty.getChildren().addAll(variableLabel, variableField);
+    variableProperty.setVisible(false);
+    variableProperty.setManaged(false);
+    inspector.getChildren().add(variableProperty);
     for (TextField input :
         new TextField[] {nameField, textField, xField, yField, widthField, heightField})
       input.setOnAction(e -> applyProperties());
@@ -363,21 +414,88 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void updateFields() {
-    formTitleField.setText(form.title);
-    formWidthField.setText(number(form.width));
-    formHeightField.setText(number(form.height));
-    boolean hasSelection = selected != null;
-    inspector.setVisible(hasSelection);
-    inspector.setManaged(hasSelection);
-    componentHeading.setText(
-        hasSelection ? "Componente selecionado · " + selected.type.label : "Componente selecionado");
-    if (!hasSelection) return;
-    nameField.setText(selected.name);
-    textField.setText(selected.text);
-    xField.setText(number(selected.x));
-    yField.setText(number(selected.y));
-    widthField.setText(number(selected.width));
-    heightField.setText(number(selected.height));
+    updatingInspector = true;
+    try {
+      formTitleField.setText(form.title);
+      formWidthField.setText(number(form.width));
+      formHeightField.setText(number(form.height));
+      boolean hasSelection = selected != null;
+      inspector.setVisible(hasSelection);
+      inspector.setManaged(hasSelection);
+      componentHeading.setText(
+          hasSelection
+              ? "Componente selecionado · " + selected.type.label
+              : "Componente selecionado");
+      if (!hasSelection) return;
+      boolean button = selected.type == GuiForm.Type.BUTTON;
+      eventProperty.setVisible(button);
+      eventProperty.setManaged(button);
+      eventField.setDisable(eventRoutines.isEmpty() && selected.eventRoutine == null);
+      eventField.getItems().setAll("— Sem ação —");
+      eventField.getItems().addAll(eventRoutines);
+      if (selected.eventRoutine != null && !eventRoutines.contains(selected.eventRoutine))
+        eventField.getItems().add("(não encontrado) " + selected.eventRoutine);
+      eventField.setValue(
+          selected.eventRoutine == null
+              ? "— Sem ação —"
+              : eventRoutines.contains(selected.eventRoutine)
+                  ? selected.eventRoutine
+                  : "(não encontrado) " + selected.eventRoutine);
+      boolean supportsVariable = selected.type != GuiForm.Type.BUTTON;
+      variableProperty.setVisible(supportsVariable);
+      variableProperty.setManaged(supportsVariable);
+      variableField.getItems().setAll("— Sem vínculo —");
+      globalVariables.forEach(
+          (name, type) -> {
+            if (selected.type != GuiForm.Type.CHECK_BOX || type.equals("logico"))
+              variableField.getItems().add(name);
+          });
+      if (selected.variableName != null && !variableField.getItems().contains(selected.variableName))
+        variableField.getItems().add("(não encontrada) " + selected.variableName);
+      variableField.setDisable(globalVariables.isEmpty() && selected.variableName == null);
+      variableField.setValue(
+          selected.variableName == null
+              ? "— Sem vínculo —"
+              : variableField.getItems().contains(selected.variableName)
+                  ? selected.variableName
+                  : "(não encontrada) " + selected.variableName);
+      nameField.setText(selected.name);
+      textField.setText(selected.text);
+      xField.setText(number(selected.x));
+      yField.setText(number(selected.y));
+      widthField.setText(number(selected.width));
+      heightField.setText(number(selected.height));
+    } finally {
+      updatingInspector = false;
+    }
+  }
+
+  private void applyEvent() {
+    if (updatingInspector
+        || selected == null
+        || selected.type != GuiForm.Type.BUTTON
+        || eventField.getValue() == null) return;
+    String choice = eventField.getValue();
+    String routine = choice.equals("— Sem ação —") ? null : choice;
+    if (routine != null && routine.startsWith("(não encontrado) ")) return;
+    if (!Objects.equals(selected.eventRoutine, routine)) {
+      selected.eventRoutine = routine;
+      markChanged(routine == null ? "Ação do botão removida." : "Procedimento associado ao botão.");
+    }
+  }
+
+  private void applyVariable() {
+    if (updatingInspector
+        || selected == null
+        || selected.type == GuiForm.Type.BUTTON
+        || variableField.getValue() == null) return;
+    String choice = variableField.getValue();
+    String variable = choice.equals("— Sem vínculo —") ? null : choice;
+    if (variable != null && variable.startsWith("(não encontrada) ")) return;
+    if (!Objects.equals(selected.variableName, variable)) {
+      selected.variableName = variable;
+      markChanged(variable == null ? "Vínculo removido." : "Componente vinculado à variável Portugol.");
+    }
   }
 
   private void applyFormProperties() {
@@ -470,22 +588,37 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void save() {
-    if (file == null) {
+    Path target = file;
+    if (target == null) {
       FileChooser chooser = chooser();
       chooser.setInitialFileName("interface.cgui.json");
       java.io.File selectedFile = chooser.showSaveDialog(owner);
       if (selectedFile == null) return;
-      file = selectedFile.toPath();
-      if (!file.getFileName().toString().endsWith(".cgui.json"))
-        file = file.resolveSibling(file.getFileName() + ".cgui.json");
+      target = selectedFile.toPath();
+      if (!target.getFileName().toString().endsWith(".cgui.json"))
+        target = target.resolveSibling(target.getFileName() + ".cgui.json");
     }
     try {
-      GuiFormStore.write(file, form);
+      saveForm(target);
+    } catch (IOException | RuntimeException ex) {
+      showError("Não foi possível salvar o formulário", ex);
+    }
+  }
+
+  /** Saves the current form and its relative algorithm reference to the given path. */
+  public void saveForm(Path target) throws IOException {
+    Path destination = target.toAbsolutePath().normalize();
+    String previousAlgorithmPath = form.algorithmPath;
+    try {
+      if (algorithmFile != null) form.algorithmPath = relativeAlgorithmPath(destination, algorithmFile);
+      GuiFormStore.write(destination, form);
+      file = destination;
       savedSnapshot = GuiFormStore.serialize(form);
       status.setText("Salvo em " + file.getFileName());
       owner.setTitle("Construtor visual — Codalgora");
-    } catch (IOException | IllegalArgumentException ex) {
-      showError("Não foi possível salvar o formulário", ex);
+    } catch (IOException | RuntimeException ex) {
+      form.algorithmPath = previousAlgorithmPath;
+      throw ex;
     }
   }
 
@@ -494,21 +627,44 @@ public final class GuiBuilderPane extends BorderPane {
     java.io.File selectedFile = chooser().showOpenDialog(owner);
     if (selectedFile == null) return;
     try {
-      GuiForm loaded = GuiFormStore.read(selectedFile.toPath());
-      form.schemaVersion = loaded.schemaVersion;
-      form.title = loaded.title;
-      form.width = loaded.width;
-      form.height = loaded.height;
-      form.elements = loaded.elements;
-      file = selectedFile.toPath();
-      savedSnapshot = GuiFormStore.serialize(form);
-      selected = null;
-      render();
-      status.setText("Formulário aberto: " + file.getFileName());
-      owner.setTitle("Construtor visual — Codalgora");
-    } catch (IOException | IllegalArgumentException ex) {
+      loadForm(selectedFile.toPath());
+    } catch (IOException | RuntimeException ex) {
       showError("Arquivo de formulário inválido", ex);
     }
+  }
+
+  /** Reopens a form, resolves its algorithm path and restores its event and variable bindings. */
+  public void loadForm(Path source) throws IOException {
+    Path formPath = source.toAbsolutePath().normalize();
+    GuiForm loaded = GuiFormStore.read(formPath);
+    Path linkedAlgorithm = resolveAlgorithmPath(loaded.algorithmPath, formPath);
+    eventRoutines.clear();
+    globalVariables.clear();
+    String algorithmNotice = null;
+    if (linkedAlgorithm != null) {
+      try {
+        refreshEventRoutines(Files.readString(linkedAlgorithm, StandardCharsets.UTF_8));
+      } catch (IOException | RuntimeException ex) {
+        linkedAlgorithm = null;
+        algorithmNotice = " O algoritmo vinculado não foi encontrado ou contém erros; vincule-o novamente.";
+      }
+    }
+    form.schemaVersion = loaded.schemaVersion;
+    form.title = loaded.title;
+    form.width = loaded.width;
+    form.height = loaded.height;
+    form.algorithmPath = loaded.algorithmPath;
+    form.elements = loaded.elements;
+    file = formPath;
+    algorithmFile = linkedAlgorithm;
+    savedSnapshot = GuiFormStore.serialize(form);
+    selected = null;
+    render();
+    status.setText(
+        "Formulário aberto: "
+            + file.getFileName()
+            + (algorithmNotice == null ? "" : algorithmNotice));
+    owner.setTitle("Construtor visual — Codalgora");
   }
 
   private void markChanged(String message) {
@@ -541,12 +697,119 @@ public final class GuiBuilderPane extends BorderPane {
     return chooser;
   }
 
+  private void linkAlgorithm() {
+    FileChooser chooser = new FileChooser();
+    chooser.setTitle("Vincular algoritmo Portugol");
+    chooser
+        .getExtensionFilters()
+        .add(new FileChooser.ExtensionFilter("Algoritmos Portugol (*.alg)", "*.alg"));
+    java.io.File selectedFile = chooser.showOpenDialog(owner);
+    if (selectedFile == null) return;
+    try {
+      linkAlgorithm(selectedFile.toPath());
+    } catch (IOException | RuntimeException ex) {
+      showError("Não foi possível vincular o algoritmo", ex);
+    }
+  }
+
+  /** Links a Portugol source file and updates the procedure choices shown for buttons. */
+  public void linkAlgorithm(Path path) throws IOException {
+    Path candidate = path.toAbsolutePath().normalize();
+    String source = Files.readString(candidate, StandardCharsets.UTF_8);
+    Program program = CodalgoraEngine.parse(source);
+    algorithmFile = candidate;
+    form.algorithmPath = candidate.toString();
+    refreshEventRoutines(program);
+    render();
+    markChanged(
+        eventRoutines.isEmpty()
+            ? "Algoritmo vinculado; ele não possui procedimentos sem parâmetros para eventos."
+            : "Algoritmo vinculado. Escolha um botão para associar um procedimento.");
+  }
+
+  private void refreshEventRoutines(String source) {
+    refreshEventRoutines(CodalgoraEngine.parse(source));
+  }
+
+  private void refreshEventRoutines(Program program) {
+    eventRoutines.clear();
+    program.routines().stream()
+        .filter(routine -> !routine.function() && routine.parameters().isEmpty())
+        .map(routine -> routine.name().toLowerCase(Locale.ROOT))
+        .distinct()
+        .forEach(eventRoutines::add);
+    globalVariables.clear();
+    program.declarations().stream()
+        .filter(declaration -> declaration.constant() == null && declaration.ranges().isEmpty())
+        .forEach(declaration -> globalVariables.put(declaration.name(), declaration.type()));
+  }
+
+  private String relativeAlgorithmPath(Path formFile, Path linkedAlgorithm) {
+    Path parent = formFile.toAbsolutePath().normalize().getParent();
+    if (parent == null)
+      throw new IllegalArgumentException("Salve o formulário em uma pasta para vincular o algoritmo.");
+    try {
+      return parent
+          .relativize(linkedAlgorithm.toAbsolutePath().normalize())
+          .toString()
+          .replace(java.io.File.separatorChar, '/');
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException(
+          "O formulário e o algoritmo precisam estar no mesmo volume.", ex);
+    }
+  }
+
+  private Path resolveAlgorithmPath(String path, Path formFile) {
+    if (path == null || path.isBlank()) return null;
+    Path savedPath = Path.of(path);
+    if (savedPath.isAbsolute()) return savedPath.normalize();
+    Path parent = formFile.toAbsolutePath().normalize().getParent();
+    return parent == null ? savedPath.normalize() : parent.resolve(savedPath).normalize();
+  }
+
   private void preview() {
     try {
       GuiFormStore.validate(form);
+      String algorithmSource = null;
+      DebugSession session = null;
+      boolean hasEvents = form.elements.stream().anyMatch(element -> element.eventRoutine != null);
+      boolean hasBindings = form.elements.stream().anyMatch(element -> element.variableName != null);
+      if (hasBindings && !hasEvents)
+        throw new IllegalArgumentException(
+            "Associe um procedimento a um botão para enviar e receber valores das variáveis.");
+      if (hasEvents || hasBindings) {
+        Path sourcePath =
+            algorithmFile != null ? algorithmFile : resolveAlgorithmPath(form.algorithmPath, file);
+        if (sourcePath == null || !Files.isRegularFile(sourcePath))
+          throw new IllegalArgumentException(
+              "O arquivo .alg vinculado não foi encontrado. Vincule-o novamente.");
+        algorithmSource = Files.readString(sourcePath, StandardCharsets.UTF_8);
+        Program program = CodalgoraEngine.parse(algorithmSource);
+        List<String> procedures =
+            program.routines().stream()
+                .filter(routine -> !routine.function() && routine.parameters().isEmpty())
+                .map(routine -> routine.name().toLowerCase(Locale.ROOT))
+                .distinct()
+                .toList();
+        for (GuiForm.Element element : form.elements)
+          if (element.eventRoutine != null
+              && !procedures.contains(element.eventRoutine.toLowerCase(Locale.ROOT)))
+            throw new IllegalArgumentException(
+                "O procedimento '" + element.eventRoutine + "' não existe no algoritmo vinculado.");
+        refreshEventRoutines(program);
+        validateVariableBindings();
+        render();
+      }
       Stage preview = new Stage();
       preview.initOwner(owner);
+      if (algorithmSource != null) {
+        String source = algorithmSource;
+        session = CodalgoraEngine.createInteractiveSession(
+            source, () -> requestInput(preview), output, ignored -> {});
+      }
+      DebugSession activeSession = session;
       Pane content = new Pane();
+      Map<String, Node> boundWidgets = new LinkedHashMap<>();
       content.setPrefSize(form.width, form.height);
       content.setMinSize(form.width, form.height);
       content.getStyleClass().add("gui-preview-canvas");
@@ -557,6 +820,22 @@ public final class GuiBuilderPane extends BorderPane {
         Region region = (Region) node;
         region.setPrefSize(element.width, element.height);
         region.setMinSize(50, 28);
+        if (element.variableName != null) boundWidgets.put(element.variableName, node);
+        if (element.eventRoutine != null && node instanceof Button button && activeSession != null) {
+          String routine = element.eventRoutine;
+          button.setOnAction(
+              event ->
+                  activeSession
+                      .fire(routine, readBoundValues(boundWidgets))
+                      .whenComplete(
+                          (snapshot, failure) -> {
+                            if (failure == null && snapshot != null)
+                              Platform.runLater(() -> updateBoundWidgets(boundWidgets, snapshot.globals()));
+                            if (failure != null
+                                && rootCause(failure) instanceof IllegalStateException error)
+                              output.accept("Não foi possível executar o evento: " + error.getMessage() + "\n");
+                          }));
+        }
         content.getChildren().add(node);
       }
       preview.setTitle(form.title);
@@ -564,10 +843,101 @@ public final class GuiBuilderPane extends BorderPane {
       scene.getStylesheets().add(stylesheet);
       scene.getRoot().setStyle(themeCss);
       preview.setScene(scene);
+      if (activeSession != null) {
+        preview.setOnHidden(event -> activeSession.stop());
+      }
       preview.show();
-    } catch (IllegalArgumentException ex) {
+      if (activeSession != null) {
+        activeSession.startInteractive(false).whenComplete(
+            (snapshot, failure) -> {
+              if (failure != null
+                  && !(rootCause(failure) instanceof java.util.concurrent.CancellationException))
+                output.accept(
+                    "Erro no algoritmo da interface: "
+                        + rootCause(failure).getMessage()
+                        + "\n");
+            });
+      }
+    } catch (IOException | RuntimeException ex) {
       showError("Não foi possível pré-visualizar", ex);
     }
+  }
+
+  private void validateVariableBindings() {
+    for (GuiForm.Element element : form.elements) {
+      if (element.variableName == null) continue;
+      String type = globalVariables.get(element.variableName.toLowerCase(Locale.ROOT));
+      if (type == null)
+        throw new IllegalArgumentException(
+            "A variável '" + element.variableName + "' não existe como variável global escalar.");
+      if (element.type == GuiForm.Type.CHECK_BOX && !type.equals("logico"))
+        throw new IllegalArgumentException(
+            "Caixas de seleção só podem ser vinculadas a variáveis do tipo logico.");
+    }
+  }
+
+  private Map<String, Object> readBoundValues(Map<String, Node> boundWidgets) {
+    Map<String, Object> values = new LinkedHashMap<>();
+    boundWidgets.forEach(
+        (name, node) -> {
+          if (node instanceof TextField field) values.put(name, field.getText());
+          else if (node instanceof CheckBox checkBox) values.put(name, checkBox.isSelected());
+        });
+    return values;
+  }
+
+  private void updateBoundWidgets(Map<String, Node> boundWidgets, Map<String, Object> variables) {
+    boundWidgets.forEach(
+        (name, node) -> {
+          if (!variables.containsKey(name)) return;
+          Object value = variables.get(name);
+          if (node instanceof TextField field) field.setText(displayVariable(value));
+          else if (node instanceof CheckBox checkBox && value instanceof Boolean logical)
+            checkBox.setSelected(logical);
+          else if (node instanceof Label label) label.setText(displayVariable(value));
+        });
+  }
+
+  private String displayVariable(Object value) {
+    if (value instanceof Boolean logical) return logical ? "VERDADEIRO" : "FALSO";
+    if (value instanceof Number number && number.doubleValue() == Math.rint(number.doubleValue()))
+      return String.format(Locale.ROOT, "%.0f", number.doubleValue());
+    return String.valueOf(value);
+  }
+
+  private String requestInput(Stage preview) throws Exception {
+    CompletableFuture<Optional<String>> answer = new CompletableFuture<>();
+    Platform.runLater(
+        () -> {
+          if (!preview.isShowing()) {
+            answer.complete(Optional.empty());
+            return;
+          }
+          TextInputDialog dialog = new TextInputDialog();
+          dialog.setTitle("Entrada do algoritmo");
+          dialog.setHeaderText("O algoritmo precisa de um valor");
+          dialog.setContentText("Digite o valor:");
+          dialog.initOwner(preview);
+          answer.complete(dialog.showAndWait());
+        });
+    try {
+      return answer.get().orElse("");
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw ex;
+    } catch (ExecutionException ex) {
+      Throwable cause = ex.getCause();
+      if (cause instanceof Exception exception) throw exception;
+      throw new IllegalStateException(cause);
+    }
+  }
+
+  private Throwable rootCause(Throwable error) {
+    Throwable current = error;
+    while ((current instanceof java.util.concurrent.CompletionException
+            || current instanceof ExecutionException)
+        && current.getCause() != null) current = current.getCause();
+    return current;
   }
 
   private void showError(String title, Exception exception) {

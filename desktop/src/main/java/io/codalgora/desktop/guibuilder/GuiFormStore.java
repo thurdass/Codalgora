@@ -76,7 +76,12 @@ public final class GuiFormStore {
       throw new IllegalArgumentException("Tamanho de janela fora dos limites permitidos.");
     if (form.elements == null || form.elements.size() > MAX_ELEMENTS)
       throw new IllegalArgumentException("O formulário precisa ter até " + MAX_ELEMENTS + " componentes.");
+    if (form.algorithmPath != null && form.algorithmPath.length() > 1000)
+      throw new IllegalArgumentException("O caminho do algoritmo é longo demais.");
     Set<String> ids = new HashSet<>(), names = new HashSet<>();
+    Set<String> editableBindings = new HashSet<>();
+    boolean hasEvent = false;
+    boolean hasVariableBinding = false;
     for (GuiForm.Element element : form.elements) {
       if (element == null || element.type == null || element.id == null || element.name == null || element.text == null)
         throw new IllegalArgumentException("Há um componente com dados incompletos.");
@@ -86,11 +91,34 @@ public final class GuiFormStore {
         throw new IllegalArgumentException("O nome do componente deve ser um identificador simples.");
       if (!ids.add(element.id) || !names.add(element.name.toLowerCase(Locale.ROOT)))
         throw new IllegalArgumentException("IDs e nomes de componentes devem ser únicos.");
+      if (element.eventRoutine != null) {
+        hasEvent = true;
+        if (element.type != GuiForm.Type.BUTTON)
+          throw new IllegalArgumentException("Eventos de interface podem ser associados a botões.");
+        if (element.eventRoutine.isBlank() || !element.eventRoutine.matches("[A-Za-z_][A-Za-z0-9_]*"))
+          throw new IllegalArgumentException("O procedimento associado ao botão é inválido.");
+      }
+      if (element.variableName != null) {
+        hasVariableBinding = true;
+        if (element.type == GuiForm.Type.BUTTON)
+          throw new IllegalArgumentException("Botões usam eventos; não podem ser vinculados a variáveis.");
+        if (element.variableName.isBlank()
+            || !element.variableName.matches("[A-Za-z_][A-Za-z0-9_]*"))
+          throw new IllegalArgumentException("A variável associada ao componente é inválida.");
+        if (element.type != GuiForm.Type.LABEL
+            && !editableBindings.add(element.variableName.toLowerCase(Locale.ROOT)))
+          throw new IllegalArgumentException(
+              "Uma variável só pode receber entrada de um componente por vez.");
+      }
       if (!Double.isFinite(element.x) || !Double.isFinite(element.y)
           || !Double.isFinite(element.width) || !Double.isFinite(element.height)
           || element.x < 0 || element.y < 0 || element.width < 50 || element.height < 28
           || element.x + element.width > form.width || element.y + element.height > form.height)
         throw new IllegalArgumentException("Posição ou tamanho de componente fora da janela.");
     }
+    if (hasEvent && (form.algorithmPath == null || form.algorithmPath.isBlank()))
+      throw new IllegalArgumentException("Vincule um arquivo .alg para usar os eventos dos botões.");
+    if (hasVariableBinding && (form.algorithmPath == null || form.algorithmPath.isBlank()))
+      throw new IllegalArgumentException("Vincule um arquivo .alg para usar variáveis Portugol.");
   }
 }

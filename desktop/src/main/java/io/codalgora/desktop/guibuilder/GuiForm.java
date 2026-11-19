@@ -10,6 +10,7 @@ public final class GuiForm {
   public String title = "Minha primeira interface";
   public double width = 420;
   public double height = 520;
+  public String algorithmPath;
   public List<Element> elements = new ArrayList<>();
 
   public static final class Element {
@@ -17,6 +18,8 @@ public final class GuiForm {
     public Type type;
     public String name;
     public String text;
+    public String eventRoutine;
+    public String variableName;
     public double x;
     public double y;
     public double width;
