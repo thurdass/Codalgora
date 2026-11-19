@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.codalgora.desktop.guibuilder.GuiBuilderPane;
 import io.codalgora.desktop.guibuilder.GuiForm;
+import io.codalgora.desktop.guibuilder.GuiFormStore;
 import java.awt.image.BufferedImage;
 import java.nio.file.*;
 import java.util.concurrent.*;
@@ -398,6 +399,30 @@ class CodalgoraApplicationTest {
         () -> {
           preview[0].hide();
           builder[0].hide();
+          return null;
+        });
+  }
+
+  @Test
+  void standaloneFormLauncherOpensTheSavedFormWithoutTheEditorShell() throws Exception {
+    GuiForm form = new GuiForm();
+    form.title = "Aplicativo exportado";
+    form.elements.add(
+        new GuiForm.Element(GuiForm.Type.BUTTON, "acao", "Executar", 24, 24, 160, 38));
+    Path file = directory.resolve("standalone.cgui.json");
+    GuiFormStore.write(file, form);
+
+    fx(
+        () -> {
+          GuiBuilderPane.openFormPreview(
+              stage,
+              CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+              EditorTheme.saved().css(),
+              file,
+              ignored -> {});
+          assertEquals("Aplicativo exportado", stage.getTitle());
+          assertEquals(1, ((javafx.scene.layout.Pane) stage.getScene().getRoot()).getChildren().size());
+          assertNotNull(stage.getScene().lookup(".button"));
           return null;
         });
   }

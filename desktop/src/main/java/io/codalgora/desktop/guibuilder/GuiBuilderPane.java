@@ -104,6 +104,18 @@ public final class GuiBuilderPane extends BorderPane {
     stage.show();
   }
 
+  /** Opens a saved visual form directly, for generated application bundles. */
+  public static void openFormPreview(
+      Stage stage, String stylesheet, String themeCss, Path formPath, Consumer<String> output) {
+    GuiBuilderPane runner = new GuiBuilderPane(stage, stylesheet, themeCss, output);
+    try {
+      runner.loadForm(formPath);
+      runner.preview(stage);
+    } catch (IOException | RuntimeException ex) {
+      runner.showError("Não foi possível abrir o aplicativo", ex);
+    }
+  }
+
   private HBox toolbar() {
     Button save = new Button("Salvar formulário");
     save.setId("guiSave");
@@ -950,6 +962,12 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void preview() {
+    Stage preview = new Stage();
+    preview.initOwner(owner);
+    preview(preview);
+  }
+
+  private void preview(Stage preview) {
     try {
       GuiFormStore.validate(form);
       String algorithmSource = null;
@@ -977,8 +995,6 @@ public final class GuiBuilderPane extends BorderPane {
         validateVariableBindings();
         render();
       }
-      Stage preview = new Stage();
-      preview.initOwner(owner);
       if (algorithmSource != null) {
         String source = algorithmSource;
         session = CodalgoraEngine.createInteractiveSession(

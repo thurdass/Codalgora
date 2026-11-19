@@ -56,6 +56,17 @@ public final class CodalgoraApplication extends Application {
   @Override
   public void start(Stage stage) {
     this.stage = stage;
+    List<String> startupArgs = getParameters() == null ? List.of() : getParameters().getRaw();
+    int formArgument = startupArgs.indexOf("--gui-form");
+    if (formArgument >= 0 && formArgument + 1 < startupArgs.size()) {
+      GuiBuilderPane.openFormPreview(
+          stage,
+          Objects.requireNonNull(getClass().getResource("codalgora.css")).toExternalForm(),
+          EditorTheme.saved().css(),
+          Path.of(startupArgs.get(formArgument + 1)),
+          System.out::print);
+      return;
+    }
     documentManager =
         new DocumentManager(
             stage,

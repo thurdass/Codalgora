@@ -21,7 +21,7 @@ O projeto usa **Java 21, JavaFX 21, ANTLR4 e RichTextFX**, com **Gradle Kotlin D
 
 A interface reúne editor com abas e realce de sintaxe, entrada e saída do algoritmo, autocompletar e depurador com pontos de parada e inspeção de variáveis. O núcleo da linguagem permanece independente da interface gráfica. Para informações sobre os recursos do dialeto VisualG atendidos pelo Codalgora, consulte a [matriz de compatibilidade](docs/compatibilidade.md) e o [levantamento Java](interpreter/compatibility-survey.md).
 
-O **protótipo do construtor visual** permite criar formulários JavaFX, vincular variáveis Portugol a controles e associar botões a procedimentos sem parâmetros. Veja o [guia do protótipo](docs/construtor-visual.md) para o fluxo e os limites atuais.
+O **construtor visual** permite criar formulários JavaFX, vincular variáveis Portugol a controles e associar ações a procedimentos. O formulário pode ser exportado como aplicativo independente para a plataforma atual; veja o [guia](docs/construtor-visual.md) para instruções e limites.
 
 ![IDE JavaFX do Codalgora](docs/assets/codalgora.png)
 
