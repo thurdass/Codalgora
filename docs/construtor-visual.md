@@ -6,7 +6,7 @@ Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Constru
 ## Fluxo rápido
 
 1. Escolha Texto, Botão, Campo de texto, Área de texto, Caixa de seleção ou Lista suspensa na paleta, ou arraste o item para a área branca.
-2. Arraste o componente no canvas; a posição acompanha uma grade de 8 pixels.
+2. Arraste o componente no canvas; a posição acompanha uma grade de 8 pixels. Segure Shift enquanto arrasta para redimensioná-lo. **Organizar** distribui os componentes em coluna ou em uma grade de duas ou três colunas.
 3. Selecione o componente na tela ou na lista lateral e edite nome, texto, posição e tamanho.
 4. Ajuste título e dimensões da janela no inspetor.
 5. Use **Vincular algoritmo .alg** para escolher o algoritmo que contém os procedimentos dos botões.
@@ -19,7 +19,7 @@ O formulário é um JSON versionado, separado do código Portugol, e mantém o c
 
 ## Limites atuais
 
-As opções da lista suspensa são separadas por `|` no inspetor. As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto, área de texto, lista suspensa ou caixa de seleção. O editor já oferece Undo/Redo limitado ao histórico da sessão; contêineres de layout, múltiplas janelas e sistema completo de projetos ainda não existem. Os eventos aceitam somente procedimentos sem parâmetros; funções e procedimentos com parâmetros não aparecem como opções. A sintaxe VisualG existente foi preservada.
+As opções da lista suspensa são separadas por `|` no inspetor. As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto, área de texto, lista suspensa ou caixa de seleção. O editor oferece Undo/Redo limitado ao histórico da sessão e comandos simples de organização; contêineres responsivos, múltiplas janelas e sistema completo de projetos ainda não existem. Os eventos aceitam somente procedimentos sem parâmetros; funções e procedimentos com parâmetros não aparecem como opções. A sintaxe VisualG existente foi preservada.
 
 ## Validar localmente
 

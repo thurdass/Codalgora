@@ -123,12 +123,20 @@ public final class GuiBuilderPane extends BorderPane {
     preview.setOnAction(e -> preview());
     Button delete = new Button("Remover selecionado");
     delete.setOnAction(e -> removeSelected());
+    MenuButton arrange = new MenuButton("Organizar");
+    MenuItem vertical = new MenuItem("Em coluna");
+    vertical.setOnAction(e -> arrangeElements(1));
+    MenuItem twoColumns = new MenuItem("Grade · 2 colunas");
+    twoColumns.setOnAction(e -> arrangeElements(2));
+    MenuItem threeColumns = new MenuItem("Grade · 3 colunas");
+    threeColumns.setOnAction(e -> arrangeElements(3));
+    arrange.getItems().addAll(vertical, twoColumns, threeColumns);
     Button link = new Button("Vincular algoritmo .alg");
     link.setId("guiLinkAlgorithm");
     link.setOnAction(e -> linkAlgorithm());
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
-    HBox bar = new HBox(8, open, save, undoButton, redoButton, link, delete, spacer, preview);
+    HBox bar = new HBox(8, open, save, undoButton, redoButton, link, arrange, delete, spacer, preview);
     updateHistoryButtons();
     bar.getStyleClass().add("editor-toolbar");
     return bar;
@@ -141,7 +149,7 @@ public final class GuiBuilderPane extends BorderPane {
     box.getStyleClass().add("gui-side");
     Label heading = new Label("Componentes");
     heading.getStyleClass().add("heading");
-    Label hint = new Label("Arraste para a tela ou clique para adicionar.");
+    Label hint = new Label("Arraste para adicionar ou mover. Shift + arraste redimensiona.");
     hint.getStyleClass().add("subtle");
     hint.setWrapText(true);
     box.getChildren().addAll(heading, hint, new Separator());
@@ -365,28 +373,32 @@ public final class GuiBuilderPane extends BorderPane {
           event -> {
             select(element);
             node.getProperties().put("dragOffset", new Point2D(event.getX(), event.getY()));
+            node.getProperties().put("resizeMode", event.isShiftDown());
             event.consume();
           });
       node.setOnMouseDragged(
           event -> {
             Point2D offset = (Point2D) node.getProperties().get("dragOffset");
             Point2D cursor = canvas.sceneToLocal(event.getSceneX(), event.getSceneY());
-            element.x =
-                clamp(
-                    snap(cursor.getX() - offset.getX()),
-                    0,
-                    form.width - node.getBoundsInLocal().getWidth());
-            element.y =
-                clamp(
-                    snap(cursor.getY() - offset.getY()),
-                    0,
-                    form.height - node.getBoundsInLocal().getHeight());
-            node.setLayoutX(element.x);
-            node.setLayoutY(element.y);
+            if (Boolean.TRUE.equals(node.getProperties().get("resizeMode"))) {
+              element.width = clamp(snap(cursor.getX() - element.x), 50, form.width - element.x);
+              element.height = clamp(snap(cursor.getY() - element.y), 28, form.height - element.y);
+              region.setPrefSize(element.width, element.height);
+            } else {
+              element.x = clamp(snap(cursor.getX() - offset.getX()), 0, form.width - element.width);
+              element.y = clamp(snap(cursor.getY() - offset.getY()), 0, form.height - element.height);
+              node.setLayoutX(element.x);
+              node.setLayoutY(element.y);
+            }
             updateFields();
             event.consume();
           });
-      node.setOnMouseReleased(event -> markChanged("Posição atualizada."));
+      node.setOnMouseReleased(
+          event ->
+              markChanged(
+                  Boolean.TRUE.equals(node.getProperties().get("resizeMode"))
+                      ? "Tamanho atualizado."
+                      : "Posição atualizada."));
       canvas.getChildren().add(node);
     }
     if (selected != null && form.elements.contains(selected)) outline.getSelectionModel().select(selected);
@@ -625,6 +637,29 @@ public final class GuiBuilderPane extends BorderPane {
     selected = null;
     render();
     markChanged("Componente removido.");
+  }
+
+  private void arrangeElements(int columns) {
+    if (form.elements.isEmpty()) return;
+    double gap = 16;
+    double columnWidth = (form.width - gap * (columns + 1)) / columns;
+    int rows = (form.elements.size() + columns - 1) / columns;
+    double[] rowHeights = new double[rows];
+    for (int i = 0; i < form.elements.size(); i++) {
+      GuiForm.Element element = form.elements.get(i);
+      int row = i / columns;
+      rowHeights[row] = Math.max(rowHeights[row], Math.min(element.height, form.height));
+      element.x = gap + (i % columns) * (columnWidth + gap);
+      element.width = Math.min(element.width, columnWidth);
+    }
+    double y = gap;
+    for (int row = 0; row < rows; row++) {
+      for (int i = row * columns; i < Math.min(form.elements.size(), (row + 1) * columns); i++)
+        form.elements.get(i).y = Math.min(y, Math.max(0, form.height - form.elements.get(i).height));
+      y += rowHeights[row] + gap;
+    }
+    render();
+    markChanged(columns == 1 ? "Componentes organizados em coluna." : "Componentes organizados em grade.");
   }
 
   private void save() {

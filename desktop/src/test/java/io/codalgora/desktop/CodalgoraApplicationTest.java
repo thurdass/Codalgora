@@ -315,6 +315,9 @@ class CodalgoraApplicationTest {
           assertEquals(3, canvas.getChildren().size());
           ((Button) builder[0].getScene().lookup("#guiRedo")).fire();
           assertEquals(4, canvas.getChildren().size());
+          MenuButton arrange = (MenuButton) builder[0].getScene().lookup(".menu-button");
+          arrange.getItems().get(1).fire();
+          assertEquals(16.0, canvas.getChildren().getFirst().getLayoutX());
           GuiBuilderPane pane = (GuiBuilderPane) builder[0].getScene().getRoot();
           pane.linkAlgorithm(algorithm);
           ListView<?> outline = (ListView<?>) builder[0].getScene().lookup("#guiOutline");
