@@ -44,7 +44,7 @@ public final class DebugSession {
   private final List<Map<String, Cell>> scopes = new ArrayList<>();
   private final Object monitor = new Object();
   private final Object invocationLock = new Object();
-  private final BlockingQueue<Invocation> invocations = new ArrayBlockingQueue<>(1024);
+  private final BlockingQueue<Invocation> invocations = new ArrayBlockingQueue<>(128);
   private volatile Set<Integer> breakpoints = Set.of();
   private volatile boolean stopped, single, started;
   private volatile boolean interactive;
@@ -88,7 +88,7 @@ public final class DebugSession {
     return startSession(debug, false);
   }
 
-  /** Starts the main algorithm and then accepts serial, zero-argument procedure events. */
+  /** Starts the main algorithm and then accepts serial procedure events. */
   public synchronized CompletableFuture<Snapshot> startInteractive(boolean debug) {
     return startSession(debug, true);
   }

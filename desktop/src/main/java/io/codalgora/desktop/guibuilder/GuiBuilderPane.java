@@ -1060,12 +1060,14 @@ public final class GuiBuilderPane extends BorderPane {
                               if (failure == null && snapshot != null)
                                 Platform.runLater(
                                     () -> updateBoundWidgets(boundWidgets, snapshot.globals()));
-                              if (failure != null
-                                  && rootCause(failure) instanceof IllegalStateException error)
-                                output.accept(
-                                    "Não foi possível executar o evento: "
-                                        + error.getMessage()
-                                        + "\n");
+                              if (failure != null) {
+                                Throwable error = rootCause(failure);
+                                if (!(error instanceof java.util.concurrent.CancellationException))
+                                  output.accept(
+                                      "Não foi possível executar o evento: "
+                                          + Objects.toString(error.getMessage(), error.toString())
+                                          + "\n");
+                              }
                             });
                   };
           if (node instanceof Button button) button.setOnAction(handler);

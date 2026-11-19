@@ -477,7 +477,7 @@ class CodalgoraApplicationTest {
     Path formPath = directory.resolve("contador.cgui.json");
     GuiFormStore.write(formPath, form);
 
-    Stage exported = new Stage();
+    Stage exported = fx(Stage::new);
     ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
     String stylesheet = CodalgoraApplication.class.getResource("codalgora.css").toExternalForm();
     fx(
@@ -542,7 +542,7 @@ class CodalgoraApplicationTest {
     Path formPath = directory.resolve("infinito.cgui.json");
     GuiFormStore.write(formPath, form);
 
-    Stage preview = new Stage();
+    Stage preview = fx(Stage::new);
     ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
     fx(
         () -> {
@@ -576,22 +576,25 @@ class CodalgoraApplicationTest {
     Files.writeString(
         algorithm,
         "algoritmo \"controles visuais\"\n"
-            + "var nome:caractere, ativo:logico, escolha:caractere\n"
-            + "procedimento receber(var nome:caractere, var ativo:logico, var escolha:caractere)\n"
+            + "var\n"
+            + "nome:caractere\n"
+            + "ativo:logico\n"
+            + "opcao:caractere\n"
+            + "procedimento receber(var nome:caractere; var ativo:logico; var opcao:caractere)\n"
             + "inicio\n"
             + "se ativo entao\n"
-            + "escreval(nome, \"|\", escolha)\n"
+            + "escreval(nome, \"|\", opcao)\n"
             + "senao\n"
             + "escreval(\"desmarcado\")\n"
             + "fimse\n"
             + "nome <- \"Codalgora\"\n"
             + "ativo <- falso\n"
-            + "escolha <- \"B\"\n"
+            + "opcao <- \"B\"\n"
             + "fimprocedimento\n"
             + "inicio\n"
             + "nome <- \"\"\n"
             + "ativo <- falso\n"
-            + "escolha <- \"A\"\n"
+            + "opcao <- \"A\"\n"
             + "fimalgoritmo\n");
     GuiForm form = new GuiForm();
     form.algorithmPath = algorithm.getFileName().toString();
@@ -609,12 +612,12 @@ class CodalgoraApplicationTest {
     form.elements.add(active);
     GuiForm.Element choice =
         new GuiForm.Element(GuiForm.Type.COMBO_BOX, "escolha", "A | B", 16, 160, 180, 38);
-    choice.variableName = "escolha";
+    choice.variableName = "opcao";
     form.elements.add(choice);
     Path formPath = directory.resolve("controles.cgui.json");
     GuiFormStore.write(formPath, form);
 
-    Stage preview = new Stage();
+    Stage preview = fx(Stage::new);
     ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
     fx(
         () -> {
@@ -664,6 +667,58 @@ class CodalgoraApplicationTest {
                     && "B".equals(root.getChildren().stream().filter(ComboBox.class::isInstance)
                         .map(ComboBox.class::cast).findFirst().orElseThrow().getValue());
               }));
+    } finally {
+      fx(
+          () -> {
+            preview.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
+  void eventErrorsAreReportedToTheApplicationOutput() throws Exception {
+    Path algorithm = directory.resolve("erro-evento.alg");
+    Files.writeString(
+        algorithm,
+        "algoritmo \"erro de evento\"\n"
+            + "var total:inteiro\n"
+            + "procedimento falhar\n"
+            + "inicio\n"
+            + "total <- 1 / 0\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "total <- 0\n"
+            + "fimalgoritmo\n");
+    GuiForm form = new GuiForm();
+    form.algorithmPath = algorithm.getFileName().toString();
+    GuiForm.Element button =
+        new GuiForm.Element(GuiForm.Type.BUTTON, "falhar", "Falhar", 16, 16, 160, 38);
+    button.eventRoutine = "falhar";
+    form.elements.add(button);
+    Path formPath = directory.resolve("erro-evento.cgui.json");
+    GuiFormStore.write(formPath, form);
+
+    Stage preview = fx(Stage::new);
+    ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
+    fx(
+        () -> {
+          GuiBuilderPane.openFormPreview(
+              preview,
+              CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+              EditorTheme.saved().css(),
+              formPath,
+              output::add);
+          ((Button) preview.getScene().getRoot().lookup(".button")).fire();
+          return null;
+        });
+    try {
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (System.nanoTime() < deadline
+          && !String.join("", output).contains("Divisão por zero")) Thread.sleep(10);
+      assertTrue(
+          String.join("", output).contains("Não foi possível executar o evento:"),
+          "Saída recebida: " + String.join("", output));
     } finally {
       fx(
           () -> {
