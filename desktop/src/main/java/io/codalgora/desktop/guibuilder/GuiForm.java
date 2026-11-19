@@ -48,7 +48,8 @@ public final class GuiForm {
     BUTTON("Botão", "Botão"),
     TEXT_FIELD("Campo de texto", "Digite aqui"),
     TEXT_AREA("Área de texto", "Escreva aqui"),
-    CHECK_BOX("Caixa de seleção", "Marcar opção");
+    CHECK_BOX("Caixa de seleção", "Marcar opção"),
+    COMBO_BOX("Lista suspensa", "Opção 1 | Opção 2");
 
     public final String label;
     public final String defaultText;

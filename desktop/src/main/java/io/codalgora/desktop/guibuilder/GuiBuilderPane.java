@@ -62,6 +62,7 @@ public final class GuiBuilderPane extends BorderPane {
   private Path algorithmFile;
   private boolean rendering;
   private boolean updatingInspector;
+  private boolean updatingPreviewControls;
   private boolean restoringHistory;
   private int historyIndex;
 
@@ -315,7 +316,7 @@ public final class GuiBuilderPane extends BorderPane {
       status.setText("O formulário atingiu o limite de " + MAX_ELEMENTS + " componentes.");
       return false;
     }
-    double width = type == GuiForm.Type.LABEL ? 180 : type == GuiForm.Type.TEXT_AREA ? 240 : 160;
+    double width = type == GuiForm.Type.LABEL ? 180 : type == GuiForm.Type.TEXT_AREA ? 240 : 180;
     double height = type == GuiForm.Type.TEXT_AREA ? 96 : type == GuiForm.Type.LABEL ? 34 : 38;
     if (!Double.isFinite(x) || !Double.isFinite(y)) {
       int index = form.elements.size();
@@ -421,6 +422,16 @@ public final class GuiBuilderPane extends BorderPane {
         yield area;
       }
       case CHECK_BOX -> new CheckBox(element.text);
+      case COMBO_BOX -> {
+        ComboBox<String> choices = new ComboBox<>();
+        java.util.Arrays.stream(element.text.split("\\|"))
+            .map(String::strip)
+            .filter(option -> !option.isEmpty())
+            .forEach(choices.getItems()::add);
+        if (choices.getItems().isEmpty()) choices.getItems().add("Opção 1");
+        choices.getSelectionModel().selectFirst();
+        yield choices;
+      }
     };
   }
 
@@ -452,7 +463,8 @@ public final class GuiBuilderPane extends BorderPane {
       boolean supportsEvent =
           selected.type == GuiForm.Type.BUTTON
               || selected.type == GuiForm.Type.TEXT_FIELD
-              || selected.type == GuiForm.Type.CHECK_BOX;
+              || selected.type == GuiForm.Type.CHECK_BOX
+              || selected.type == GuiForm.Type.COMBO_BOX;
       eventProperty.setVisible(supportsEvent);
       eventProperty.setManaged(supportsEvent);
       ((Label) eventProperty.getChildren().getFirst())
@@ -500,7 +512,8 @@ public final class GuiBuilderPane extends BorderPane {
   private void applyEvent() {
     if (updatingInspector
         || selected == null
-        || selected.type != GuiForm.Type.BUTTON
+        || selected.type == GuiForm.Type.LABEL
+        || selected.type == GuiForm.Type.TEXT_AREA
         || eventField.getValue() == null) return;
     String choice = eventField.getValue();
     String routine = choice.equals("— Sem ação —") ? null : choice;
@@ -914,24 +927,27 @@ public final class GuiBuilderPane extends BorderPane {
           String routine = element.eventRoutine;
           var handler =
               (javafx.event.EventHandler<javafx.event.ActionEvent>)
-                  event ->
-                      activeSession
-                          .fire(routine, readBoundValues(boundWidgets))
-                          .whenComplete(
-                              (snapshot, failure) -> {
-                                if (failure == null && snapshot != null)
-                                  Platform.runLater(
-                                      () -> updateBoundWidgets(boundWidgets, snapshot.globals()));
-                                if (failure != null
-                                    && rootCause(failure) instanceof IllegalStateException error)
-                                  output.accept(
-                                      "Não foi possível executar o evento: "
-                                          + error.getMessage()
-                                          + "\n");
-                              });
+                  event -> {
+                    if (updatingPreviewControls) return;
+                    activeSession
+                        .fire(routine, readBoundValues(boundWidgets))
+                        .whenComplete(
+                            (snapshot, failure) -> {
+                              if (failure == null && snapshot != null)
+                                Platform.runLater(
+                                    () -> updateBoundWidgets(boundWidgets, snapshot.globals()));
+                              if (failure != null
+                                  && rootCause(failure) instanceof IllegalStateException error)
+                                output.accept(
+                                    "Não foi possível executar o evento: "
+                                        + error.getMessage()
+                                        + "\n");
+                            });
+                  };
           if (node instanceof Button button) button.setOnAction(handler);
           else if (node instanceof TextField field) field.setOnAction(handler);
           else if (node instanceof CheckBox checkBox) checkBox.setOnAction(handler);
+          else if (node instanceof ComboBox<?> choices) choices.setOnAction(handler);
         }
         content.getChildren().add(node);
       }
@@ -980,21 +996,33 @@ public final class GuiBuilderPane extends BorderPane {
           if (node instanceof TextField field) values.put(name, field.getText());
           else if (node instanceof TextArea area) values.put(name, area.getText());
           else if (node instanceof CheckBox checkBox) values.put(name, checkBox.isSelected());
+          else if (node instanceof ComboBox<?> choices && choices.getValue() != null)
+            values.put(name, choices.getValue().toString());
         });
     return values;
   }
 
   private void updateBoundWidgets(Map<String, Node> boundWidgets, Map<String, Object> variables) {
-    boundWidgets.forEach(
-        (name, node) -> {
-          if (!variables.containsKey(name)) return;
-          Object value = variables.get(name);
-          if (node instanceof TextField field) field.setText(displayVariable(value));
-          else if (node instanceof TextArea area) area.setText(displayVariable(value));
-          else if (node instanceof CheckBox checkBox && value instanceof Boolean logical)
-            checkBox.setSelected(logical);
-          else if (node instanceof Label label) label.setText(displayVariable(value));
-        });
+    updatingPreviewControls = true;
+    try {
+      boundWidgets.forEach(
+          (name, node) -> {
+            if (!variables.containsKey(name)) return;
+            Object value = variables.get(name);
+            if (node instanceof TextField field) field.setText(displayVariable(value));
+            else if (node instanceof TextArea area) area.setText(displayVariable(value));
+            else if (node instanceof CheckBox checkBox && value instanceof Boolean logical)
+              checkBox.setSelected(logical);
+            else if (node instanceof Label label) label.setText(displayVariable(value));
+            else if (node instanceof ComboBox<?> choices) {
+              @SuppressWarnings("unchecked")
+              ComboBox<Object> mutableChoices = (ComboBox<Object>) choices;
+              mutableChoices.setValue(displayVariable(value));
+            }
+          });
+    } finally {
+      updatingPreviewControls = false;
+    }
   }
 
   private String displayVariable(Object value) {

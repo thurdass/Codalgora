@@ -95,7 +95,7 @@ public final class GuiFormStore {
         hasEvent = true;
         if (element.type == GuiForm.Type.LABEL || element.type == GuiForm.Type.TEXT_AREA)
           throw new IllegalArgumentException(
-              "Eventos podem ser associados a botões, campos de texto ou caixas de seleção.");
+              "Eventos podem ser associados a controles interativos.");
         if (element.eventRoutine.isBlank() || !element.eventRoutine.matches("[A-Za-z_][A-Za-z0-9_]*"))
           throw new IllegalArgumentException("O procedimento associado ao botão é inválido.");
       }

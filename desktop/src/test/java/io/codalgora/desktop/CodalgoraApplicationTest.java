@@ -309,11 +309,12 @@ class CodalgoraApplicationTest {
           assertEquals("Olá, estudante!", ((Label) canvas.getChildren().getFirst()).getText());
           ((Button) builder[0].getScene().lookup("#palette-TEXT_FIELD")).fire();
           ((Button) builder[0].getScene().lookup("#palette-BUTTON")).fire();
-          assertEquals(3, canvas.getChildren().size());
+          ((Button) builder[0].getScene().lookup("#palette-COMBO_BOX")).fire();
+          assertEquals(4, canvas.getChildren().size());
           ((Button) builder[0].getScene().lookup("#guiUndo")).fire();
-          assertEquals(2, canvas.getChildren().size());
-          ((Button) builder[0].getScene().lookup("#guiRedo")).fire();
           assertEquals(3, canvas.getChildren().size());
+          ((Button) builder[0].getScene().lookup("#guiRedo")).fire();
+          assertEquals(4, canvas.getChildren().size());
           GuiBuilderPane pane = (GuiBuilderPane) builder[0].getScene().getRoot();
           pane.linkAlgorithm(algorithm);
           ListView<?> outline = (ListView<?>) builder[0].getScene().lookup("#guiOutline");
@@ -340,7 +341,7 @@ class CodalgoraApplicationTest {
               .filter(window -> window instanceof Stage candidate
                   && candidate.getTitle().equals("Minha primeira interface"))
               .map(Stage.class::cast).findFirst().orElseThrow();
-          assertEquals(3, ((javafx.scene.layout.Pane) preview[0].getScene().getRoot()).getChildren().size());
+          assertEquals(4, ((javafx.scene.layout.Pane) preview[0].getScene().getRoot()).getChildren().size());
           return null;
         });
     assertNotNull(preview[0]);
