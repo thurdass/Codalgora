@@ -48,6 +48,12 @@ val appImageName = if (hostOs.isMacOsX) "Codalgora.app" else "Codalgora"
 val stageGuiProject = tasks.register("stageGuiProject") {
     group = "distribution"
     description = "Prepare a portable visual form and Portugol source for the exported app"
+    inputs.property("guiFormPath", providers.gradleProperty("guiForm").orElse(""))
+    inputs.property("guiAlgorithmPath", providers.gradleProperty("guiAlgorithm").orElse(""))
+    inputs.files(provider {
+        listOfNotNull(project.findProperty("guiForm"), project.findProperty("guiAlgorithm"))
+            .map { file(it.toString()) }
+    }).withPropertyName("guiProjectFiles")
     outputs.dir(guiExportDirectory)
     doLast {
         val formPath = project.findProperty("guiForm")?.toString()
