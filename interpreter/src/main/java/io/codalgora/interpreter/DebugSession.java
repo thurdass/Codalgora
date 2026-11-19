@@ -44,7 +44,7 @@ public final class DebugSession {
   private final List<Map<String, Cell>> scopes = new ArrayList<>();
   private final Object monitor = new Object();
   private final Object invocationLock = new Object();
-  private final BlockingQueue<Invocation> invocations = new ArrayBlockingQueue<>(64);
+  private final BlockingQueue<Invocation> invocations = new ArrayBlockingQueue<>(1024);
   private volatile Set<Integer> breakpoints = Set.of();
   private volatile boolean stopped, single, started;
   private volatile boolean interactive;

@@ -7,6 +7,7 @@ import io.codalgora.desktop.guibuilder.GuiForm;
 import io.codalgora.desktop.guibuilder.GuiFormStore;
 import java.awt.image.BufferedImage;
 import java.nio.file.*;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
 import javafx.application.Platform;
@@ -404,27 +405,272 @@ class CodalgoraApplicationTest {
   }
 
   @Test
-  void standaloneFormLauncherOpensTheSavedFormWithoutTheEditorShell() throws Exception {
+  void standaloneFormLauncherRebuildsSavedControlsAfterStageRestart() throws Exception {
     GuiForm form = new GuiForm();
     form.title = "Aplicativo exportado";
     form.elements.add(
         new GuiForm.Element(GuiForm.Type.BUTTON, "acao", "Executar", 24, 24, 160, 38));
+    form.elements.add(
+        new GuiForm.Element(GuiForm.Type.TEXT_FIELD, "nome", "Nome", 24, 72, 160, 38));
+    form.elements.add(
+        new GuiForm.Element(GuiForm.Type.CHECK_BOX, "ativo", "Ativo", 24, 120, 160, 38));
+    form.elements.add(
+        new GuiForm.Element(GuiForm.Type.COMBO_BOX, "opcao", "A | B", 24, 168, 160, 38));
     Path file = directory.resolve("standalone.cgui.json");
     GuiFormStore.write(file, form);
 
+    String stylesheet = CodalgoraApplication.class.getResource("codalgora.css").toExternalForm();
     fx(
         () -> {
           GuiBuilderPane.openFormPreview(
               stage,
-              CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+              stylesheet,
               EditorTheme.saved().css(),
               file,
               ignored -> {});
           assertEquals("Aplicativo exportado", stage.getTitle());
-          assertEquals(1, ((javafx.scene.layout.Pane) stage.getScene().getRoot()).getChildren().size());
+          assertEquals(4, ((javafx.scene.layout.Pane) stage.getScene().getRoot()).getChildren().size());
           assertNotNull(stage.getScene().lookup(".button"));
+          assertNotNull(stage.getScene().lookup(".text-field"));
+          assertNotNull(stage.getScene().lookup(".check-box"));
+          assertNotNull(stage.getScene().lookup(".combo-box"));
           return null;
         });
+    fx(
+        () -> {
+          stage.hide();
+          Stage restarted = new Stage();
+          GuiBuilderPane.openFormPreview(restarted, stylesheet, EditorTheme.saved().css(), file, ignored -> {});
+          assertEquals("Aplicativo exportado", restarted.getTitle());
+          assertEquals(4, ((javafx.scene.layout.Pane) restarted.getScene().getRoot()).getChildren().size());
+          assertNotNull(restarted.getScene().lookup(".combo-box"));
+          restarted.hide();
+          return null;
+        });
+  }
+
+  @Test
+  void exportedStylePreviewProcessesOneHundredRapidClicksInOrder() throws Exception {
+    Path algorithm = directory.resolve("contador.alg");
+    Files.writeString(
+        algorithm,
+        "algoritmo \"contador visual\"\n"
+            + "var total:inteiro\n"
+            + "procedimento incrementar(var total:inteiro)\n"
+            + "inicio\n"
+            + "total <- total + 1\n"
+            + "escreval(total)\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "total <- 0\n"
+            + "fimalgoritmo\n");
+    GuiForm form = new GuiForm();
+    form.algorithmPath = algorithm.getFileName().toString();
+    GuiForm.Element button =
+        new GuiForm.Element(GuiForm.Type.BUTTON, "incrementar", "Incrementar", 16, 16, 160, 38);
+    button.eventRoutine = "incrementar";
+    form.elements.add(button);
+    GuiForm.Element total =
+        new GuiForm.Element(GuiForm.Type.LABEL, "total", "0", 16, 64, 160, 32);
+    total.variableName = "total";
+    form.elements.add(total);
+    Path formPath = directory.resolve("contador.cgui.json");
+    GuiFormStore.write(formPath, form);
+
+    Stage exported = new Stage();
+    ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
+    String stylesheet = CodalgoraApplication.class.getResource("codalgora.css").toExternalForm();
+    fx(
+        () -> {
+          GuiBuilderPane.openFormPreview(exported, stylesheet, EditorTheme.saved().css(), formPath, output::add);
+          return null;
+        });
+    try {
+      Button increment = fx(() -> (Button) exported.getScene().getRoot().lookup(".button"));
+      fx(
+          () -> {
+            for (int click = 0; click < 100; click++) increment.fire();
+            return null;
+          });
+
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+      while (System.nanoTime() < deadline && !String.join("", output).contains("100\n"))
+        Thread.sleep(10);
+      List<Integer> values =
+          String.join("", output).lines().map(String::trim)
+              .filter(line -> line.matches("\\d+"))
+              .map(Integer::parseInt).toList();
+      assertEquals(java.util.stream.IntStream.rangeClosed(1, 100).boxed().toList(), values);
+
+      Label totalLabel = fx(() -> (Label) exported.getScene().getRoot().lookup(".label"));
+      deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (System.nanoTime() < deadline && !fx(() -> totalLabel.getText().equals("100")))
+        Thread.sleep(10);
+      assertEquals("100", fx(totalLabel::getText));
+    } finally {
+      fx(
+          () -> {
+            exported.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
+  void closingPreviewCancelsInfiniteEventWithoutBlockingJavaFx() throws Exception {
+    Path algorithm = directory.resolve("infinito.alg");
+    Files.writeString(
+        algorithm,
+        "algoritmo \"cancelamento visual\"\n"
+            + "var total:inteiro\n"
+            + "procedimento girar\n"
+            + "inicio\n"
+            + "escreval(\"evento iniciado\")\n"
+            + "enquanto verdadeiro faca\n"
+            + "total <- total + 1\n"
+            + "fimenquanto\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "total <- 0\n"
+            + "fimalgoritmo\n");
+    GuiForm form = new GuiForm();
+    form.algorithmPath = algorithm.getFileName().toString();
+    GuiForm.Element button =
+        new GuiForm.Element(GuiForm.Type.BUTTON, "girar", "Girar", 16, 16, 160, 38);
+    button.eventRoutine = "girar";
+    form.elements.add(button);
+    Path formPath = directory.resolve("infinito.cgui.json");
+    GuiFormStore.write(formPath, form);
+
+    Stage preview = new Stage();
+    ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
+    fx(
+        () -> {
+          GuiBuilderPane.openFormPreview(
+              preview,
+              CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+              EditorTheme.saved().css(),
+              formPath,
+              output::add);
+          ((Button) preview.getScene().getRoot().lookup(".button")).fire();
+          return null;
+        });
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+    while (System.nanoTime() < deadline && !String.join("", output).contains("evento iniciado"))
+      Thread.sleep(10);
+    assertTrue(String.join("", output).contains("evento iniciado"));
+
+    CompletableFuture<Void> responsive = new CompletableFuture<>();
+    fx(
+        () -> {
+          preview.hide();
+          Platform.runLater(() -> responsive.complete(null));
+          return null;
+        });
+    responsive.get(2, TimeUnit.SECONDS);
+  }
+
+  @Test
+  void textCheckAndComboBindingsReachPortugolAndRefreshAfterEvent() throws Exception {
+    Path algorithm = directory.resolve("controles.alg");
+    Files.writeString(
+        algorithm,
+        "algoritmo \"controles visuais\"\n"
+            + "var nome:caractere, ativo:logico, escolha:caractere\n"
+            + "procedimento receber(var nome:caractere, var ativo:logico, var escolha:caractere)\n"
+            + "inicio\n"
+            + "se ativo entao\n"
+            + "escreval(nome, \"|\", escolha)\n"
+            + "senao\n"
+            + "escreval(\"desmarcado\")\n"
+            + "fimse\n"
+            + "nome <- \"Codalgora\"\n"
+            + "ativo <- falso\n"
+            + "escolha <- \"B\"\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "nome <- \"\"\n"
+            + "ativo <- falso\n"
+            + "escolha <- \"A\"\n"
+            + "fimalgoritmo\n");
+    GuiForm form = new GuiForm();
+    form.algorithmPath = algorithm.getFileName().toString();
+    GuiForm.Element button =
+        new GuiForm.Element(GuiForm.Type.BUTTON, "receber", "Enviar", 16, 16, 160, 38);
+    button.eventRoutine = "receber";
+    form.elements.add(button);
+    GuiForm.Element name =
+        new GuiForm.Element(GuiForm.Type.TEXT_FIELD, "nome", "Nome", 16, 64, 180, 38);
+    name.variableName = "nome";
+    form.elements.add(name);
+    GuiForm.Element active =
+        new GuiForm.Element(GuiForm.Type.CHECK_BOX, "ativo", "Ativo", 16, 112, 160, 38);
+    active.variableName = "ativo";
+    form.elements.add(active);
+    GuiForm.Element choice =
+        new GuiForm.Element(GuiForm.Type.COMBO_BOX, "escolha", "A | B", 16, 160, 180, 38);
+    choice.variableName = "escolha";
+    form.elements.add(choice);
+    Path formPath = directory.resolve("controles.cgui.json");
+    GuiFormStore.write(formPath, form);
+
+    Stage preview = new Stage();
+    ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
+    fx(
+        () -> {
+          GuiBuilderPane.openFormPreview(
+              preview,
+              CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+              EditorTheme.saved().css(),
+              formPath,
+              output::add);
+          javafx.scene.layout.Pane root = (javafx.scene.layout.Pane) preview.getScene().getRoot();
+          root.getChildren().stream().filter(TextField.class::isInstance).map(TextField.class::cast)
+              .findFirst().orElseThrow().setText("Arthur");
+          root.getChildren().stream().filter(CheckBox.class::isInstance).map(CheckBox.class::cast)
+              .findFirst().orElseThrow().setSelected(true);
+          root.getChildren().stream().filter(ComboBox.class::isInstance).map(ComboBox.class::cast)
+              .findFirst().orElseThrow().setValue("B");
+          root.getChildren().stream().filter(Button.class::isInstance).map(Button.class::cast)
+              .findFirst().orElseThrow().fire();
+          return null;
+        });
+    try {
+      long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (System.nanoTime() < deadline && !String.join("", output).contains("Arthur|B"))
+        Thread.sleep(10);
+      assertTrue(String.join("", output).contains("Arthur|B"));
+
+      deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+      while (System.nanoTime() < deadline
+          && !fx(
+              () -> {
+                javafx.scene.layout.Pane root = (javafx.scene.layout.Pane) preview.getScene().getRoot();
+                return root.getChildren().stream().filter(TextField.class::isInstance)
+                        .map(TextField.class::cast).findFirst().orElseThrow().getText().equals("Codalgora")
+                    && !root.getChildren().stream().filter(CheckBox.class::isInstance)
+                        .map(CheckBox.class::cast).findFirst().orElseThrow().isSelected()
+                    && "B".equals(root.getChildren().stream().filter(ComboBox.class::isInstance)
+                        .map(ComboBox.class::cast).findFirst().orElseThrow().getValue());
+              })) Thread.sleep(10);
+      assertTrue(
+          fx(
+              () -> {
+                javafx.scene.layout.Pane root = (javafx.scene.layout.Pane) preview.getScene().getRoot();
+                return root.getChildren().stream().filter(TextField.class::isInstance)
+                        .map(TextField.class::cast).findFirst().orElseThrow().getText().equals("Codalgora")
+                    && !root.getChildren().stream().filter(CheckBox.class::isInstance)
+                        .map(CheckBox.class::cast).findFirst().orElseThrow().isSelected()
+                    && "B".equals(root.getChildren().stream().filter(ComboBox.class::isInstance)
+                        .map(ComboBox.class::cast).findFirst().orElseThrow().getValue());
+              }));
+    } finally {
+      fx(
+          () -> {
+            preview.hide();
+            return null;
+          });
+    }
   }
 
   @Test

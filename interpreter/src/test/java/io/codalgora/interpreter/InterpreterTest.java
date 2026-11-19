@@ -414,4 +414,28 @@ final class InterpreterTest {
     session.stop();
     assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
   }
+
+  @Test
+  void interactiveSessionProcessesOneHundredQueuedEventsWithoutLoss() throws Exception {
+    String source =
+        "algoritmo \"eventos em fila\"\n"
+            + "var total:inteiro\n"
+            + "procedimento incrementar\n"
+            + "inicio\n"
+            + "total <- total + 1\n"
+            + "fimprocedimento\n"
+            + "inicio\n"
+            + "total <- 0\n"
+            + "fimalgoritmo\n";
+    DebugSession session = CodalgoraEngine.createInteractiveSession(source, null, null, null);
+    CompletableFuture<Snapshot> stopped = session.startInteractive(false);
+    List<CompletableFuture<Snapshot>> clicks = new ArrayList<>();
+
+    for (int click = 0; click < 100; click++) clicks.add(session.fire("incrementar"));
+
+    CompletableFuture.allOf(clicks.toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
+    assertEquals(100.0, clicks.getLast().get().globals().get("total"));
+    session.stop();
+    assertEquals(Status.STOPPED, stopped.get(5, TimeUnit.SECONDS).status());
+  }
 }
