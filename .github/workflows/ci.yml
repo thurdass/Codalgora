@@ -87,3 +87,43 @@ jobs:
         with:
           name: JUnit-reports-${{ runner.os }}
           path: '**/build/reports/tests/'
+  publish-release:
+    if: github.ref == 'refs/tags/v0.2.1'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Codalgora-Java21-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Create and verify combined SHA-256 checksums
+        run: |
+          python desktop/packaging/create-checksums.py release-assets
+          cd release-assets
+          sha256sum -c SHA256SUMS.txt
+      - name: Publish Codalgora v0.2.1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          Codalgora v0.2.1 conclui a migração de identidade de Algora para Codalgora e oferece instaladores nativos para Linux e Windows.
+
+          - IDE educacional para escrever, executar e depurar algoritmos em Portugol.
+          - Pacote Debian x64 e instaladores Windows x64 MSI e EXE, gerados nos runners correspondentes.
+          - Testes, instalação, inicialização, atalhos e desinstalação validados no CI.
+          - Os instaladores preservam os arquivos `.alg`, a sintaxe VisualG e o caminho legado de preferências `/io/algora/desktop`.
+          - `SHA256SUMS.txt` contém os checksums SHA-256 de todos os instaladores desta release.
+
+          A release histórica Algora v0.2.0 permanece disponível sem alterações.
+          EOF
+          gh release create "$TAG" --verify-tag \
+            --title "Codalgora v0.2.1 — Windows e Linux" \
+            --notes-file release-notes.md release-assets/*

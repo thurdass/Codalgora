@@ -5,7 +5,7 @@
 ![Java 21](https://img.shields.io/badge/Java-21-007396)
 ![Plataformas: Linux e Windows](https://img.shields.io/badge/plataformas-Linux%20%7C%20Windows-555555)
 
-> **v0.2.1 em preparação:** o Codalgora está em desenvolvimento ativo e pode apresentar bugs ou comportamentos inesperados. A versão oferece edição, execução e depuração de algoritmos em uma interface moderna; seus instaladores ainda não foram publicados.
+> **Versão beta:** o Codalgora está em desenvolvimento ativo e pode apresentar bugs ou comportamentos inesperados. A distribuição v0.2.1 disponibiliza instaladores após os workflows Linux e Windows validarem os artefatos.
 
 <p align="center">
   <img src="docs/assets/codalgora-logo.png" alt="Logo do Codalgora" width="320">
@@ -15,7 +15,7 @@
 
 Idealizado e desenvolvido por **Arthur Almeida**, o Codalgora é um projeto pessoal criado para oferecer uma IDE moderna e acessível a estudantes de lógica de programação. Seu objetivo é unir simplicidade, aprendizado e uma experiência de desenvolvimento que acompanhe os primeiros passos na programação.
 
-O projeto está em fase beta; a versão v0.2.1 está sendo preparada para distribuição.
+O projeto está em fase beta. O fluxo de publicação da v0.2.1 gera e valida os instaladores Linux e Windows antes de disponibilizar os downloads.
 
 O projeto usa **Java 21, JavaFX 21, ANTLR4 e RichTextFX**, com **Gradle Kotlin DSL**, testes **JUnit 5** e distribuição nativa via **jpackage**.
 
@@ -27,12 +27,15 @@ A interface utiliza fontes IBM Plex locais, painéis recolhíveis e composição
 
 ## Downloads
 
-Os instaladores disponíveis atualmente pertencem à release histórica [Algora v0.2.0](https://github.com/thurdass/Codalgora/releases/tag/v0.2.0) e ainda exibem a identidade antiga. Não há instaladores Codalgora v0.2.1 publicados neste momento.
+Os links diretos dos instaladores v0.2.1 são ativados pela publicação da release, depois que os workflows validam os pacotes e seus checksums:
 
-- **Windows x64:** `Algora-0.2.0.msi` (recomendado) ou `Algora-0.2.0.exe`.
-- **Linux x64 (Debian/Ubuntu):** `algora_0.2.0_amd64.deb`; instale com `sudo apt install ./algora_0.2.0_amd64.deb`.
+- **Windows x64:** [MSI (recomendado)](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/Codalgora-0.2.1.msi) ou [EXE](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/Codalgora-0.2.1.exe).
+- **Linux x64 (Debian/Ubuntu):** [pacote DEB](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/codalgora_0.2.1_amd64.deb); instale com `sudo apt install ./codalgora_0.2.1_amd64.deb`.
+- [Checksums SHA-256](https://github.com/thurdass/Codalgora/releases/download/v0.2.1/SHA256SUMS.txt).
 
-Os instaladores incluem o runtime Java; não é necessário instalar um JDK para usar a IDE. O arquivo `SHA256SUMS.txt` permite conferir a integridade dos downloads. O pacote Linux é destinado a distribuições compatíveis com `.deb`.
+Os instaladores incluem o runtime Java; não é necessário instalar um JDK para usar a IDE. O pacote Linux é destinado a distribuições compatíveis com `.deb`.
+
+Os arquivos da release histórica [Algora v0.2.0](https://github.com/thurdass/Codalgora/releases/tag/v0.2.0) permanecem disponíveis sem alterações e ainda exibem a identidade antiga.
 
 ## Executar a partir do código
 

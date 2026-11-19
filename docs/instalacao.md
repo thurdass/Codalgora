@@ -1,6 +1,6 @@
 # Instalação e desenvolvimento
 
-O Codalgora usa Java 21, JavaFX 21, ANTLR4 e RichTextFX. A versão em preparação é 0.2.1; ainda não há instaladores Codalgora dessa versão publicados. A release histórica v0.2.0 contém os instaladores da marca Algora. O build utiliza Gradle Wrapper com Kotlin DSL; não é necessário instalar Gradle globalmente. A primeira execução precisa de rede para baixar a distribuição e as dependências. Um JDK completo, com `jpackage`, é necessário para gerar pacotes.
+O Codalgora usa Java 21, JavaFX 21, ANTLR4 e RichTextFX. A distribuição v0.2.1 publica pacotes Linux e Windows após geração e validação nos runners correspondentes. A release histórica v0.2.0 contém os instaladores da marca Algora e permanece preservada. O build utiliza Gradle Wrapper com Kotlin DSL; não é necessário instalar Gradle globalmente. A primeira execução precisa de rede para baixar a distribuição e as dependências. Um JDK completo, com `jpackage`, é necessário para gerar pacotes.
 
 ## Desenvolvimento
 
@@ -33,7 +33,7 @@ O primeiro comando usa o tipo `app-image` do `jpackage`: uma pasta executável c
 
 A tarefa Linux gera `.deb` e requer `dpkg-deb` e `fakeroot`. A tarefa Windows gera `.exe` e `.msi` e requer WiX compatível com o JDK 21. O `.msi` é a opção recomendada para abrir diretamente o Windows Installer, sem a extração intermediária do `.exe`. Os pacotes precisam ser testados em cada sistema; a compilação Java por si só não verifica diálogos nativos, fontes, atalhos ou instalação.
 
-A aplicação fica em `desktop/build/jpackage/image/Codalgora/`; no Linux, o executável é `desktop/build/jpackage/image/Codalgora/bin/Codalgora`. Instaladores ficam em `desktop/build/jpackage/installer/`. A distribuição inclui runtime; o usuário final não precisa instalar um JDK separadamente.
+A aplicação fica em `desktop/build/jpackage/image/Codalgora/`; no Linux, o executável é `desktop/build/jpackage/image/Codalgora/bin/Codalgora`. Instaladores ficam em `desktop/build/jpackage/installer/`. A distribuição inclui runtime; o usuário final não precisa instalar um JDK separadamente. O pacote Debian registra o atalho no menu de aplicações e o remove na desinstalação; as preferências existentes em `/io/algora/desktop` são mantidas.
 
 ## Verificação dos pacotes
 
