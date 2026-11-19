@@ -13,6 +13,14 @@ if dpkg-query -W -f='${Status}' codalgora 2>/dev/null | grep -q 'install ok inst
   exit 1
 fi
 
+system_applications=/usr/local/share/applications
+registered_launcher="$system_applications/codalgora-Codalgora.desktop"
+sudo install -d -m 755 "$system_applications"
+if [[ -e "$registered_launcher" ]]; then
+  echo "Unexpected pre-existing launcher: $registered_launcher" >&2
+  exit 1
+fi
+
 legacy_prefs="$HOME/.java/.userPrefs/io/algora/desktop"
 sentinel="$legacy_prefs/codalgora-rebranding-preservation-check"
 mkdir -p "$legacy_prefs"
@@ -20,12 +28,12 @@ printf '%s\n' 'preserve-existing-algora-preferences' > "$sentinel"
 
 cleanup() {
   if dpkg-query -W -f='${Status}' codalgora 2>/dev/null | grep -q 'install ok installed'; then
-    sudo apt-get remove -y codalgora || true
+    sudo env XDG_DATA_DIRS=/usr/local/share apt-get remove -y codalgora || true
   fi
 }
 trap cleanup EXIT
 
-sudo apt-get install -y "$installer"
+sudo env XDG_DATA_DIRS=/usr/local/share apt-get install -y "$installer"
 expected_version="$(dpkg-deb -f "$installer" Version)"
 actual_package="$(dpkg-query -W -f='${Package} ${Version} ${Architecture}' codalgora)"
 [[ "$actual_package" == "codalgora $expected_version amd64" ]]
@@ -34,11 +42,14 @@ desktop_entry="$(find /opt/codalgora/lib -maxdepth 1 -name '*.desktop' -print -q
 test -n "$desktop_entry"
 grep -qx 'Name=Codalgora' "$desktop_entry"
 grep -qx 'StartupWMClass=io.codalgora.desktop.CodalgoraApplication' "$desktop_entry"
+test -f "$registered_launcher"
+grep -qx 'Name=Codalgora' "$registered_launcher"
 
 python3 "$root/desktop/packaging/tests/verify-linux-desktop.py" --installed
-sudo apt-get remove -y codalgora
+sudo env XDG_DATA_DIRS=/usr/local/share apt-get remove -y codalgora
 trap - EXIT
 test ! -e /opt/codalgora
+test ! -e "$registered_launcher"
 test -f "$sentinel"
 grep -qx 'preserve-existing-algora-preferences' "$sentinel"
 echo 'CODALGORA_DEB_INSTALL_LAUNCH_UNINSTALL_OK'
