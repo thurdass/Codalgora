@@ -20,7 +20,6 @@ import java.util.function.Consumer;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
-import javafx.css.PseudoClass;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -34,7 +33,6 @@ import javafx.stage.Stage;
 /** First visual editor prototype. Form data is kept separate from Portugol source. */
 public final class GuiBuilderPane extends BorderPane {
   private static final int MAX_ELEMENTS = GuiFormStore.MAX_ELEMENTS;
-  private static final PseudoClass SELECTED = PseudoClass.getPseudoClass("selected");
 
   private final Stage owner;
   private final String stylesheet;
@@ -43,6 +41,10 @@ public final class GuiBuilderPane extends BorderPane {
   private final GuiForm form = new GuiForm();
   private String savedSnapshot = GuiFormStore.serialize(form);
   private final Pane canvas = new Pane();
+  private GuiCanvasTools tools;
+  private GuiStyleInspector styleInspector;
+  private GuiForm.Element copied;
+  private Path copiedAlgorithm;
   private final ListView<GuiForm.Element> outline = new ListView<>();
   private final VBox inspector = new VBox(10);
   private final Label status = new Label("Arraste componentes para a tela ou escolha na paleta.");
@@ -55,6 +57,7 @@ public final class GuiBuilderPane extends BorderPane {
   private final List<String> history = new ArrayList<>();
   private Label componentHeading;
   private Button undoButton, redoButton;
+  private Spinner<Double> spacing, padding;
   private TextField formTitleField, formWidthField, formHeightField;
   private ComboBox<GuiForm.LayoutMode> formLayoutField;
   private TextField nameField, textField, xField, yField, widthField, heightField;
@@ -74,6 +77,7 @@ public final class GuiBuilderPane extends BorderPane {
     this.output = output == null ? ignored -> {} : output;
     history.add(savedSnapshot);
     getStyleClass().add("gui-builder");
+    tools = new GuiCanvasTools(form, canvas, this::widget, this::select, this::markChanged, this::updateFields, this::render);
     setTop(toolbar());
     setLeft(palette());
     setCenter(designArea());
@@ -83,6 +87,24 @@ public final class GuiBuilderPane extends BorderPane {
         .getSelectionModel()
         .selectedItemProperty()
         .addListener((o, old, value) -> select(value));
+    addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+      if (event.getTarget() instanceof TextInputControl) return;
+      if (event.getCode() == javafx.scene.input.KeyCode.F2) { tools.editInline(); event.consume(); }
+      else if (event.getCode() == javafx.scene.input.KeyCode.DELETE) { removeSelected(); event.consume(); }
+      else if (event.isShortcutDown()) {
+        switch (event.getCode()) {
+          case C -> copySelected(); case V -> pasteSelected(); case D -> duplicateSelected();
+          case Z -> { if (event.isShiftDown()) redo(); else undo(); } case Y -> redo();
+          default -> { return; }
+        }
+        event.consume();
+      }
+    });
+    ContextMenu menu = new ContextMenu();
+    String[] titles = {"Editar texto (F2)", "Copiar", "Colar", "Duplicar", "Excluir"};
+    Runnable[] actions = {tools::editInline, this::copySelected, this::pasteSelected, this::duplicateSelected, this::removeSelected};
+    for (int i=0;i<titles.length;i++) { MenuItem item = new MenuItem(titles[i]); Runnable action = actions[i]; item.setOnAction(e -> action.run()); menu.getItems().add(item); }
+    tools.setOnContextMenuRequested(e -> { menu.show(tools, e.getScreenX(), e.getScreenY()); e.consume(); });
     render();
   }
 
@@ -116,7 +138,7 @@ public final class GuiBuilderPane extends BorderPane {
     }
   }
 
-  private HBox toolbar() {
+  private FlowPane toolbar() {
     Button save = new Button("Salvar formulário");
     save.setId("guiSave");
     save.getStyleClass().add("run-button");
@@ -130,7 +152,7 @@ public final class GuiBuilderPane extends BorderPane {
     Button open = new Button("Abrir");
     open.setId("guiOpen");
     open.setOnAction(e -> open());
-    Button preview = new Button("Pré-visualizar");
+    Button preview = new Button("Executar formulário");
     preview.setId("guiPreview");
     preview.getStyleClass().add("run-button");
     preview.setOnAction(e -> preview());
@@ -149,7 +171,7 @@ public final class GuiBuilderPane extends BorderPane {
     link.setOnAction(e -> linkAlgorithm());
     Region spacer = new Region();
     HBox.setHgrow(spacer, Priority.ALWAYS);
-    HBox bar = new HBox(8, open, save, undoButton, redoButton, link, arrange, delete, spacer, preview);
+    FlowPane bar = new FlowPane(8, 6, open, save, undoButton, redoButton, link, arrange, delete, preview);
     updateHistoryButtons();
     bar.getStyleClass().add("editor-toolbar");
     return bar;
@@ -162,9 +184,11 @@ public final class GuiBuilderPane extends BorderPane {
     box.getStyleClass().add("gui-side");
     Label heading = new Label("Componentes");
     heading.getStyleClass().add("heading");
-    Label hint = new Label("Arraste para adicionar ou mover. Shift + arraste redimensiona.");
+    Label hint = new Label("Arraste para mover. Use as alças para redimensionar. Duplo clique ou F2 edita o texto.");
     hint.getStyleClass().add("subtle");
     hint.setWrapText(true);
+    hint.setMaxWidth(160);
+    hint.setMinHeight(Region.USE_PREF_SIZE);
     box.getChildren().addAll(heading, hint, new Separator());
     for (GuiForm.Type type : GuiForm.Type.values()) {
       Button item = new Button("+   " + type.label);
@@ -192,7 +216,7 @@ public final class GuiBuilderPane extends BorderPane {
     return box;
   }
 
-  private ScrollPane designArea() {
+  private BorderPane designArea() {
     canvas.setPrefSize(form.width, form.height);
     canvas.setMinSize(form.width, form.height);
     canvas.setMaxSize(form.width, form.height);
@@ -219,14 +243,29 @@ public final class GuiBuilderPane extends BorderPane {
           event.setDropCompleted(success);
           event.consume();
         });
-    StackPane stage = new StackPane(canvas);
+    javafx.scene.Group zoomed = new javafx.scene.Group(tools);
+    StackPane stage = new StackPane(new javafx.scene.Group(zoomed));
     stage.setPadding(new Insets(30));
     stage.getStyleClass().add("gui-stage");
     ScrollPane scroll = new ScrollPane(stage);
     scroll.setFitToWidth(true);
     scroll.setFitToHeight(true);
     scroll.getStyleClass().add("gui-scroll");
-    return scroll;
+    CheckBox grid = new CheckBox("Encaixar na grade"); grid.setId("guiSnap"); grid.setSelected(true);
+    grid.setOnAction(e -> tools.snap = grid.isSelected());
+    Slider zoom = new Slider(25, 200, 100); zoom.setId("guiZoom"); zoom.setPrefWidth(110);
+    Label percent = new Label("100%");
+    zoom.valueProperty().addListener((o, old, value) -> {
+      zoomed.setScaleX(value.doubleValue()/100); zoomed.setScaleY(value.doubleValue()/100);
+      percent.setText(Math.round(value.doubleValue()) + "%");
+    });
+    Button fit = new Button("Ajustar à janela"); fit.setId("guiFit");
+    fit.setOnAction(e -> zoom.setValue(Math.max(25, Math.min(200, 100*Math.min(
+        (scroll.getViewportBounds().getWidth()-60)/form.width,
+        (scroll.getViewportBounds().getHeight()-60)/form.height)))));
+    Label mode = new Label("Design"); mode.getStyleClass().add("heading");
+    HBox controls = new HBox(12, mode, grid, zoom, percent, fit); controls.setPadding(new Insets(10));
+    BorderPane area = new BorderPane(scroll); area.setTop(controls); return area;
   }
 
   private ScrollPane propertiesPanel() {
@@ -265,6 +304,7 @@ public final class GuiBuilderPane extends BorderPane {
           if (!updatingInspector && formLayoutField.getValue() != null
               && form.layout != formLayoutField.getValue()) {
             form.layout = formLayoutField.getValue();
+            render();
             markChanged("Layout responsivo atualizado.");
           }
         });
@@ -272,9 +312,19 @@ public final class GuiBuilderPane extends BorderPane {
     addProperty(box, "Título da janela", formTitleField);
     addProperty(box, "Largura da janela", formWidthField);
     addProperty(box, "Altura da janela", formHeightField);
-    Label layoutLabel = new Label("Organização da prévia");
+    Label layoutLabel = new Label("Organização do formulário");
     layoutLabel.getStyleClass().add("subtle");
     box.getChildren().addAll(layoutLabel, formLayoutField);
+    spacing = new Spinner<>(0.0, 64.0, form.spacing); spacing.setId("guiSpacing");
+    padding = new Spinner<>(0.0, 64.0, form.padding); padding.setId("guiFormPadding");
+    spacing.valueProperty().addListener((o, old, value) -> { if (!updatingInspector) { form.spacing=value; render(); markChanged("Espaçamento atualizado."); } });
+    padding.valueProperty().addListener((o, old, value) -> { if (!updatingInspector) { form.padding=value; render(); markChanged("Margem interna atualizada."); } });
+    box.getChildren().addAll(new Label("Espaçamento entre componentes"), spacing, new Label("Margem interna"), padding);
+    List<Node> windowFields = new ArrayList<>(box.getChildren().subList(2, box.getChildren().size()));
+    box.getChildren().remove(2, box.getChildren().size());
+    VBox windowProperties = new VBox(8); windowProperties.getChildren().setAll(windowFields);
+    TitledPane windowSection = new TitledPane("Janela e layout", windowProperties);
+    windowSection.setExpanded(false); box.getChildren().add(windowSection);
     componentHeading = new Label("Componente selecionado");
     componentHeading.getStyleClass().add("section-heading");
     box.getChildren().add(componentHeading);
@@ -290,10 +340,13 @@ public final class GuiBuilderPane extends BorderPane {
     heightField = field();
     addProperty(inspector, "Nome", nameField);
     addProperty(inspector, "Texto", textField);
-    addProperty(inspector, "Posição X", xField);
-    addProperty(inspector, "Posição Y", yField);
-    addProperty(inspector, "Largura", widthField);
-    addProperty(inspector, "Altura", heightField);
+    VBox geometry = new VBox(8);
+    addProperty(geometry, "Posição X", xField);
+    addProperty(geometry, "Posição Y", yField);
+    addProperty(geometry, "Largura preferida", widthField);
+    addProperty(geometry, "Altura preferida", heightField);
+    TitledPane geometrySection = new TitledPane("Posição e tamanho", geometry);
+    geometrySection.setExpanded(false); inspector.getChildren().add(geometrySection);
     Label eventLabel = new Label("Ao clicar");
     eventLabel.getStyleClass().add("subtle");
     eventField.setId("guiEventRoutine");
@@ -305,7 +358,7 @@ public final class GuiBuilderPane extends BorderPane {
     eventProperty.getChildren().addAll(eventLabel, eventField);
     eventProperty.setVisible(false);
     eventProperty.setManaged(false);
-    inspector.getChildren().add(eventProperty);
+
     Label variableLabel = new Label("Variável Portugol");
     variableLabel.getStyleClass().add("subtle");
     variableField.setId("guiVariableName");
@@ -315,7 +368,8 @@ public final class GuiBuilderPane extends BorderPane {
     variableProperty.getChildren().addAll(variableLabel, variableField);
     variableProperty.setVisible(false);
     variableProperty.setManaged(false);
-    inspector.getChildren().add(variableProperty);
+    TitledPane behavior = new TitledPane("Eventos e variáveis Portugol", new VBox(8, eventProperty, variableProperty));
+    behavior.setExpanded(false); inspector.getChildren().add(behavior);
     for (TextField input :
         new TextField[] {nameField, textField, xField, yField, widthField, heightField})
       input.setOnAction(e -> applyProperties());
@@ -336,6 +390,8 @@ public final class GuiBuilderPane extends BorderPane {
                 if (wasFocused && !focused) applyFormProperties();
               });
     }
+    styleInspector = new GuiStyleInspector(() -> { tools.refreshAppearance(); markChanged("Aparência atualizada."); });
+    inspector.getChildren().add(styleInspector);
     box.getChildren().add(inspector);
     ScrollPane scroll = new ScrollPane(box);
     scroll.setFitToWidth(true);
@@ -402,50 +458,8 @@ public final class GuiBuilderPane extends BorderPane {
   private void render() {
     if (rendering) return;
     rendering = true;
-    canvas.getChildren().clear();
     outline.getItems().setAll(form.elements);
-    for (GuiForm.Element element : form.elements) {
-      Node node = widget(element);
-      node.setLayoutX(element.x);
-      node.setLayoutY(element.y);
-      node.setUserData(element);
-      node.getStyleClass().add("gui-component");
-      node.pseudoClassStateChanged(SELECTED, element == selected);
-      Region region = (Region) node;
-      region.setPrefSize(element.width, element.height);
-      region.setMinSize(50, 28);
-      node.setOnMousePressed(
-          event -> {
-            select(element);
-            node.getProperties().put("dragOffset", new Point2D(event.getX(), event.getY()));
-            node.getProperties().put("resizeMode", event.isShiftDown());
-            event.consume();
-          });
-      node.setOnMouseDragged(
-          event -> {
-            Point2D offset = (Point2D) node.getProperties().get("dragOffset");
-            Point2D cursor = canvas.sceneToLocal(event.getSceneX(), event.getSceneY());
-            if (Boolean.TRUE.equals(node.getProperties().get("resizeMode"))) {
-              element.width = clamp(snap(cursor.getX() - element.x), 50, form.width - element.x);
-              element.height = clamp(snap(cursor.getY() - element.y), 28, form.height - element.y);
-              region.setPrefSize(element.width, element.height);
-            } else {
-              element.x = clamp(snap(cursor.getX() - offset.getX()), 0, form.width - element.width);
-              element.y = clamp(snap(cursor.getY() - offset.getY()), 0, form.height - element.height);
-              node.setLayoutX(element.x);
-              node.setLayoutY(element.y);
-            }
-            updateFields();
-            event.consume();
-          });
-      node.setOnMouseReleased(
-          event ->
-              markChanged(
-                  Boolean.TRUE.equals(node.getProperties().get("resizeMode"))
-                      ? "Tamanho atualizado."
-                      : "Posição atualizada."));
-      canvas.getChildren().add(node);
-    }
+    tools.render(selected);
     if (selected != null && form.elements.contains(selected)) outline.getSelectionModel().select(selected);
     else {
       selected = null;
@@ -456,7 +470,7 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private Node widget(GuiForm.Element element) {
-    return switch (element.type) {
+    Node node = switch (element.type) {
       case LABEL -> new Label(element.text);
       case BUTTON -> new Button(element.text);
       case TEXT_FIELD -> {
@@ -481,6 +495,17 @@ public final class GuiBuilderPane extends BorderPane {
       case CHECK_BOX -> new CheckBox(element.text);
       case COMBO_BOX -> {
         ComboBox<String> choices = new ComboBox<>();
+        choices.setButtonCell(new ListCell<>() {
+          @Override protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty); setText(empty ? null : item);
+          }
+        });
+        choices.setCellFactory(view -> new ListCell<>() {
+          @Override protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty); setText(empty ? null : item);
+            GuiAppearance.apply(this, element.appearance);
+          }
+        });
         java.util.Arrays.stream(element.text.split("\\|"))
             .map(String::strip)
             .filter(option -> !option.isEmpty())
@@ -490,15 +515,17 @@ public final class GuiBuilderPane extends BorderPane {
         yield choices;
       }
     };
+    GuiAppearance.apply(node, element.appearance);
+    node.hoverProperty().addListener((o, old, value) -> GuiAppearance.apply(node, element.appearance));
+    node.pressedProperty().addListener((o, old, value) -> GuiAppearance.apply(node, element.appearance));
+    node.disabledProperty().addListener((o, old, value) -> GuiAppearance.apply(node, element.appearance));
+    return node;
   }
 
   private void select(GuiForm.Element element) {
     if (rendering || element == selected) return;
     selected = element;
-    for (Node node : canvas.getChildren()) {
-      GuiForm.Element item = (GuiForm.Element) node.getUserData();
-      node.pseudoClassStateChanged(SELECTED, item == selected);
-    }
+    tools.select(element);
     outline.getSelectionModel().select(element);
     updateFields();
   }
@@ -510,6 +537,8 @@ public final class GuiBuilderPane extends BorderPane {
       formWidthField.setText(number(form.width));
       formHeightField.setText(number(form.height));
       formLayoutField.setValue(form.layout);
+      spacing.getValueFactory().setValue(form.spacing);
+      padding.getValueFactory().setValue(form.padding);
       boolean hasSelection = selected != null;
       inspector.setVisible(hasSelection);
       inspector.setManaged(hasSelection);
@@ -556,6 +585,9 @@ public final class GuiBuilderPane extends BorderPane {
               : variableField.getItems().contains(selected.variableName)
                   ? selected.variableName
                   : "(não encontrada) " + selected.variableName);
+      styleInspector.edit(selected);
+      xField.setDisable(form.layout != GuiForm.LayoutMode.FREE);
+      yField.setDisable(form.layout != GuiForm.LayoutMode.FREE);
       nameField.setText(selected.name);
       textField.setText(selected.text);
       xField.setText(number(selected.x));
@@ -625,7 +657,7 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void applyProperties() {
-    if (selected == null) return;
+    if (updatingInspector || selected == null) return;
     try {
       String name = nameField.getText().strip();
       if (name.isEmpty()) throw new IllegalArgumentException("Informe um nome.");
@@ -673,9 +705,34 @@ public final class GuiBuilderPane extends BorderPane {
     return Math.max(min, Math.min(max, value));
   }
 
-  private double snap(double value) {
-    return Math.round(value / 8) * 8;
+  private void copySelected() {
+    tools.finishInline(true);
+    if (selected != null) { copied = GuiFormStore.copyElement(selected); copiedAlgorithm = algorithmFile; status.setText("Componente copiado."); }
   }
+
+  private void duplicateSelected() { if (selected != null) { copySelected(); pasteSelected(); } }
+
+  private void pasteSelected() {
+    if (copied == null || form.elements.size() >= MAX_ELEMENTS) return;
+    if ((copied.eventRoutine != null || copied.variableName != null)
+        && !Objects.equals(copiedAlgorithm, algorithmFile)) {
+      status.setText("Vincule o mesmo algoritmo antes de colar este componente com vínculos.");
+      return;
+    }
+    GuiForm.Element clone = GuiFormStore.copyElement(copied);
+    clone.id = java.util.UUID.randomUUID().toString();
+    int suffix=1; String name;
+    do { name = "copia" + suffix++; } while (hasName(name));
+    clone.name = name;
+    clone.x = clamp(clone.x+16, 0, form.width-clone.width);
+    clone.y = clamp(clone.y+16, 0, form.height-clone.height);
+    boolean detached = clone.variableName != null && clone.type != GuiForm.Type.LABEL;
+    if (detached) clone.variableName = null;
+    form.elements.add(clone); selected = clone; render();
+    markChanged(detached ? "Cópia criada sem vínculo de entrada; escolha outra variável." : "Componente duplicado.");
+  }
+
+  private boolean hasName(String name) { return form.elements.stream().anyMatch(e -> e.name.equalsIgnoreCase(name)); }
 
   private void removeSelected() {
     if (selected == null) return;
@@ -728,6 +785,7 @@ public final class GuiBuilderPane extends BorderPane {
 
   /** Saves the current form and its relative algorithm reference to the given path. */
   public void saveForm(Path target) throws IOException {
+    tools.finishInline(true);
     Path destination = target.toAbsolutePath().normalize();
     String previousAlgorithmPath = form.algorithmPath;
     try {
@@ -777,6 +835,7 @@ public final class GuiBuilderPane extends BorderPane {
     form.width = loaded.width;
     form.height = loaded.height;
     form.layout = loaded.layout;
+    form.spacing = loaded.spacing; form.padding = loaded.padding;
     form.algorithmPath = loaded.algorithmPath;
     form.elements = loaded.elements;
     file = formPath;
@@ -813,12 +872,14 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void undo() {
+    tools.finishInline(true);
     if (historyIndex == 0) return;
     historyIndex--;
     restoreHistory();
   }
 
   private void redo() {
+    tools.finishInline(true);
     if (historyIndex >= history.size() - 1) return;
     historyIndex++;
     restoreHistory();
@@ -833,6 +894,7 @@ public final class GuiBuilderPane extends BorderPane {
       form.width = restored.width;
       form.height = restored.height;
       form.layout = restored.layout;
+      form.spacing = restored.spacing; form.padding = restored.padding;
       form.algorithmPath = restored.algorithmPath;
       form.elements = restored.elements;
       selected = null;
@@ -908,7 +970,7 @@ public final class GuiBuilderPane extends BorderPane {
     render();
     markChanged(
         eventRoutines.isEmpty()
-            ? "Algoritmo vinculado; ele não possui procedimentos sem parâmetros para eventos."
+            ? "Algoritmo vinculado; ele não possui procedimentos compatíveis com os vínculos de eventos."
             : "Algoritmo vinculado. Escolha um botão para associar um procedimento.");
   }
 
@@ -1004,7 +1066,7 @@ public final class GuiBuilderPane extends BorderPane {
       Region content =
           switch (form.layout) {
             case FREE -> new Pane();
-            case VERTICAL -> new VBox(12);
+            case VERTICAL -> new VBox(form.spacing);
             case GRID -> new GridPane();
           };
       Map<String, Node> boundWidgets = new LinkedHashMap<>();
@@ -1013,13 +1075,13 @@ public final class GuiBuilderPane extends BorderPane {
       content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
       content.getStyleClass().add("gui-preview-canvas");
       if (content instanceof VBox column) {
-        column.setPadding(new Insets(16));
+        column.setPadding(new Insets(form.padding));
         column.setFillWidth(true);
       }
       if (content instanceof GridPane grid) {
-        grid.setPadding(new Insets(16));
-        grid.setHgap(12);
-        grid.setVgap(12);
+        grid.setPadding(new Insets(form.padding));
+        grid.setHgap(form.spacing);
+        grid.setVgap(form.spacing);
         for (int i = 0; i < 2; i++) {
           ColumnConstraints constraint = new ColumnConstraints();
           constraint.setPercentWidth(50);
@@ -1037,7 +1099,7 @@ public final class GuiBuilderPane extends BorderPane {
           node.setLayoutX(element.x);
           node.setLayoutY(element.y);
         } else {
-          region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+          region.setMaxSize(element.growWidth ? Double.MAX_VALUE : Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
           if (content instanceof VBox column) VBox.setVgrow(node, Priority.NEVER);
           if (content instanceof GridPane grid) {
             GridPane.setHgrow(node, Priority.ALWAYS);
@@ -1198,7 +1260,7 @@ public final class GuiBuilderPane extends BorderPane {
     Alert alert = new Alert(Alert.AlertType.ERROR, exception.getMessage(), ButtonType.OK);
     alert.setTitle(title);
     alert.setHeaderText(title);
-    alert.initOwner(owner);
+    if (owner.getScene() != null) alert.initOwner(owner);
     alert.showAndWait();
     status.setText(title + ".");
   }

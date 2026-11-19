@@ -728,6 +728,214 @@ class CodalgoraApplicationTest {
     }
   }
 
+  private static void mouse(javafx.scene.Node target, javafx.event.EventType<MouseEvent> type,
+                            double x, double y, int clicks) {
+    Event.fireEvent(target, new MouseEvent(type, x, y, x, y, MouseButton.PRIMARY, clicks,
+        false, false, false, false, type != MouseEvent.MOUSE_RELEASED,
+        false, false, false, false, true, new PickResult(target, x, y)));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void visualEditingHandlesTextAppearanceAndManagedLayouts() throws Exception {
+    GuiForm initial = new GuiForm();
+    initial.elements.add(new GuiForm.Element(GuiForm.Type.BUTTON, "calcular", "Botão 1", 80, 80, 180, 48));
+    initial.elements.add(new GuiForm.Element(GuiForm.Type.LABEL, "resultado", "Resultado", 80, 200, 180, 48));
+    Path original = directory.resolve("original.cgui.json"), edited = directory.resolve("editado.cgui.json");
+    GuiFormStore.write(original, initial);
+    Stage builder = fx(() -> {
+      GuiBuilderPane.open(stage, CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(), EditorTheme.saved().css(), ignored -> {});
+      return Window.getWindows().stream().filter(w -> w instanceof Stage s && s.getTitle().startsWith("Construtor visual"))
+          .map(Stage.class::cast).findFirst().orElseThrow();
+    });
+    GuiBuilderPane pane = fx(() -> (GuiBuilderPane) builder.getScene().getRoot());
+    try {
+      for (String direction : new String[] {"NW", "N", "NE", "E", "SE", "S", "SW", "W"}) {
+        fx(() -> {
+          pane.loadForm(original);
+          CheckBox snap = (CheckBox) pane.lookup("#guiSnap");
+          if (snap.isSelected()) snap.fire();
+          ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+          pane.applyCss(); pane.layout();
+          javafx.scene.Node handle = pane.lookup("#guiResize-" + direction);
+          assertTrue(handle.isVisible());
+          var point = handle.localToScene(4.5, 4.5);
+          double dx = direction.contains("W") ? -16 : direction.contains("E") ? 16 : 0;
+          double dy = direction.contains("N") ? -16 : direction.contains("S") ? 16 : 0;
+          mouse(handle, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+          mouse(handle, MouseEvent.MOUSE_DRAGGED, point.getX()+dx, point.getY()+dy, 1);
+          mouse(handle, MouseEvent.MOUSE_RELEASED, point.getX()+dx, point.getY()+dy, 1);
+          pane.saveForm(edited);
+          GuiForm.Element resized = GuiFormStore.read(edited).elements.getFirst();
+          assertEquals(180 + (dx == 0 ? 0 : 16), resized.width, direction);
+          assertEquals(48 + (dy == 0 ? 0 : 16), resized.height, direction);
+          ((Button) pane.lookup("#guiUndo")).fire(); pane.saveForm(edited);
+          assertEquals(180, GuiFormStore.read(edited).elements.getFirst().width);
+          ((Button) pane.lookup("#guiRedo")).fire(); pane.saveForm(edited);
+          assertEquals(resized.width, GuiFormStore.read(edited).elements.getFirst().width);
+          return null;
+        });
+      }
+      fx(() -> {
+        pane.loadForm(original);
+        ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+        pane.applyCss(); pane.layout();
+        Event.fireEvent(pane, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.F2, false, false, false, false));
+        TextField inline = (TextField) pane.lookup("#guiInlineText");
+        assertTrue(inline.isVisible()); inline.setText("Cancelar edição");
+        Event.fireEvent(inline, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
+        pane.saveForm(edited); assertEquals("Botão 1", GuiFormStore.read(edited).elements.getFirst().text);
+        javafx.scene.Node button = ((javafx.scene.layout.Pane) pane.lookup("#guiCanvas")).getChildren().getFirst();
+        var point = button.localToScene(20, 20);
+        mouse(button, MouseEvent.MOUSE_CLICKED, point.getX(), point.getY(), 2);
+        inline.setText("Calcular"); inline.fireEvent(new ActionEvent());
+        pane.saveForm(edited);
+        assertEquals("Calcular", GuiFormStore.read(edited).elements.getFirst().text);
+        assertEquals("calcular", GuiFormStore.read(edited).elements.getFirst().name);
+        ((Button) pane.lookup("#guiUndo")).fire(); pane.saveForm(edited);
+        assertEquals("Botão 1", GuiFormStore.read(edited).elements.getFirst().text);
+        ((Button) pane.lookup("#guiRedo")).fire();
+        ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+        ColorPicker background = (ColorPicker) pane.lookup("#guiBackgroundColor");
+        background.setValue(javafx.scene.paint.Color.web("#12345680")); background.fireEvent(new ActionEvent());
+        ((Spinner<Double>) pane.lookup("#guiFontSize")).getValueFactory().setValue(22.0);
+        ((CheckBox) pane.lookup("#guiBold")).fire();
+        ((ComboBox<GuiForm.Alignment>) pane.lookup("#guiAlignment")).setValue(GuiForm.Alignment.CENTER);
+        pane.saveForm(edited);
+        GuiForm styled = GuiFormStore.read(edited);
+        assertEquals("#12345680", styled.elements.getFirst().appearance.normal.background);
+        assertEquals(22, styled.elements.getFirst().appearance.fontSize);
+        assertTrue(styled.elements.getFirst().appearance.bold);
+        Event.fireEvent(pane, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.D, false, true, false, false));
+        pane.saveForm(edited); assertEquals(3, GuiFormStore.read(edited).elements.size());
+        ((Button) pane.lookup("#guiUndo")).fire(); pane.saveForm(edited);
+        assertEquals(2, GuiFormStore.read(edited).elements.size());
+        pane.loadForm(edited);
+        ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+        captureStage(builder, "Codalgora-GUI-Edicao.png");
+        return null;
+      });
+      for (GuiForm.LayoutMode layout : GuiForm.LayoutMode.values()) {
+        fx(() -> {
+          ((ComboBox<GuiForm.LayoutMode>) pane.lookup("#guiLayoutMode")).setValue(layout);
+          ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+          pane.applyCss(); pane.layout();
+          javafx.scene.Node handle = pane.lookup("#guiResize-SE");
+          var point = handle.localToScene(4.5,4.5);
+          mouse(handle, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+          mouse(handle, MouseEvent.MOUSE_DRAGGED, point.getX()+16, point.getY()+8, 1);
+          mouse(handle, MouseEvent.MOUSE_RELEASED, point.getX()+16, point.getY()+8, 1);
+          pane.saveForm(edited);
+          GuiForm saved = GuiFormStore.read(edited);
+          assertEquals(80, saved.elements.getFirst().x);
+          assertEquals(80, saved.elements.getFirst().y);
+          Stage preview = new Stage();
+          GuiBuilderPane.openFormPreview(preview, CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(), EditorTheme.saved().css(), edited, ignored -> {});
+          try {
+            javafx.scene.Node node = ((javafx.scene.layout.Pane) preview.getScene().getRoot()).getChildren().getFirst();
+            assertTrue(node.getStyle().contains("#12345680"));
+            assertTrue(node.getStyle().contains("22.0px"));
+            assertEquals("Calcular", ((Button) node).getText());
+          } finally { preview.hide(); }
+          return null;
+        });
+      }
+    } finally { fx(() -> { builder.hide(); return null; }); }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void designDragZoomCopyAndReorderNeverRunPortugol() throws Exception {
+    Files.writeString(directory.resolve("design.alg"), """
+        algoritmo "design separado"
+        procedimento agir
+        inicio
+        escreval("acionado")
+        fimprocedimento
+        inicio
+        escreval("execucao")
+        fimalgoritmo
+        """);
+    GuiForm form = new GuiForm(); form.algorithmPath = "design.alg";
+    var button = new GuiForm.Element(GuiForm.Type.BUTTON, "acao", "Agir", 80, 80, 160, 48);
+    button.eventRoutine = "agir"; form.elements.add(button);
+    form.elements.add(new GuiForm.Element(GuiForm.Type.LABEL, "rotulo", "Saída", 80, 240, 160, 48));
+    Path file = directory.resolve("design.cgui.json"), saved = directory.resolve("design-salvo.cgui.json");
+    GuiFormStore.write(file, form);
+    ConcurrentLinkedQueue<String> output = new ConcurrentLinkedQueue<>();
+    Stage builder = fx(() -> {
+      GuiBuilderPane.open(stage, CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(), EditorTheme.saved().css(), output::add);
+      return Window.getWindows().stream().filter(w -> w instanceof Stage s && s.getTitle().startsWith("Construtor visual"))
+          .map(Stage.class::cast).findFirst().orElseThrow();
+    });
+    try {
+      fx(() -> {
+        GuiBuilderPane pane = (GuiBuilderPane) builder.getScene().getRoot(); pane.loadForm(file);
+        pane.applyCss(); pane.layout();
+        javafx.scene.layout.Pane canvas = (javafx.scene.layout.Pane) pane.lookup("#guiCanvas");
+        javafx.scene.Node node = canvas.getChildren().getFirst(); var point = node.localToScene(20, 20);
+        mouse(node, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+        mouse(node, MouseEvent.MOUSE_RELEASED, point.getX(), point.getY(), 1);
+        pane.saveForm(saved); assertEquals(80, GuiFormStore.read(saved).elements.getFirst().x);
+        mouse(node, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+        mouse(node, MouseEvent.MOUSE_DRAGGED, point.getX()+18, point.getY()+20, 1);
+        mouse(node, MouseEvent.MOUSE_RELEASED, point.getX()+18, point.getY()+20, 1);
+        pane.saveForm(saved);
+        assertEquals(96, GuiFormStore.read(saved).elements.getFirst().x);
+        assertEquals(104, GuiFormStore.read(saved).elements.getFirst().y);
+        ((CheckBox) pane.lookup("#guiSnap")).fire();
+        ((Slider) pane.lookup("#guiZoom")).setValue(150);
+        pane.layout(); point = node.localToScene(20,20);
+        mouse(node, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+        mouse(node, MouseEvent.MOUSE_DRAGGED, point.getX()+30, point.getY()+30, 1);
+        mouse(node, MouseEvent.MOUSE_RELEASED, point.getX()+30, point.getY()+30, 1);
+        pane.saveForm(saved);
+        assertEquals(116, GuiFormStore.read(saved).elements.getFirst().x, .01);
+        assertEquals(124, GuiFormStore.read(saved).elements.getFirst().y, .01);
+        Event.fireEvent(pane, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.C, false,true,false,false));
+        Event.fireEvent(pane, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.V, false,true,false,false));
+        pane.saveForm(saved); assertEquals(3, GuiFormStore.read(saved).elements.size());
+        ((Button) pane.lookup("#guiUndo")).fire();
+        ((ComboBox<GuiForm.LayoutMode>) pane.lookup("#guiLayoutMode")).setValue(GuiForm.LayoutMode.VERTICAL);
+        pane.applyCss(); pane.layout();
+        javafx.scene.layout.Pane column = (javafx.scene.layout.Pane) canvas.getChildren().getFirst();
+        node = column.getChildren().getFirst(); var end = column.getChildren().get(1).localToScene(20,20); point = node.localToScene(20,20);
+        mouse(node, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+        mouse(node, MouseEvent.MOUSE_DRAGGED, end.getX(), end.getY(), 1);
+        mouse(node, MouseEvent.MOUSE_RELEASED, end.getX(), end.getY(), 1);
+        pane.saveForm(saved);
+        assertEquals("rotulo", GuiFormStore.read(saved).elements.getFirst().name);
+        assertEquals("agir", GuiFormStore.read(saved).elements.get(1).eventRoutine);
+        assertTrue(output.isEmpty(), "Gestos de Design não devem executar o algoritmo");
+        ((Button) pane.lookup("#guiFit")).fire();
+        captureStage(builder, "Codalgora-GUI-Layout.png");
+        return null;
+      });
+    } finally { fx(() -> { builder.hide(); return null; }); }
+  }
+
+  @Test
+  void comboAppearanceReachesTheDisplayedValue() throws Exception {
+    GuiForm form = new GuiForm();
+    var element = new GuiForm.Element(GuiForm.Type.COMBO_BOX, "opcao", "A | B", 20, 20, 180, 48);
+    element.appearance.normal.foreground = "#0f2345";
+    element.appearance.normal.background = "#eeeeee";
+    element.appearance.fontSize = 20;
+    form.elements.add(element);
+    Path file = directory.resolve("combo-estilizado.cgui.json"); GuiFormStore.write(file, form);
+    fx(() -> {
+      Stage preview = new Stage();
+      try {
+        GuiBuilderPane.openFormPreview(preview, CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(), EditorTheme.saved().css(), file, ignored -> {});
+        preview.getScene().getRoot().applyCss(); preview.getScene().getRoot().layout();
+        ComboBox<?> combo = (ComboBox<?>) ((javafx.scene.layout.Pane) preview.getScene().getRoot()).getChildren().getFirst();
+        assertEquals(javafx.scene.paint.Color.web("#0f2345"), combo.getButtonCell().getTextFill());
+        assertEquals(20, combo.getButtonCell().getFont().getSize());
+      } finally { preview.hide(); }
+      return null;
+    });
+  }
+
   @Test
   void compactLayoutKeepsEditorUsableAndPanelsCanBeReopened() throws Exception {
     fx(
