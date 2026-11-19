@@ -11,7 +11,7 @@ import tempfile
 import time
 
 root = pathlib.Path(__file__).resolve().parents[3]
-installer = root / "desktop/build/jpackage/installer/codalgora_0.2.0_amd64.deb"
+installer = root / "desktop/build/jpackage/installer/codalgora_0.2.1_amd64.deb"
 with tempfile.TemporaryDirectory(prefix="codalgora-desktop-") as directory:
     unpacked = pathlib.Path(directory)
     subprocess.run(["dpkg-deb", "-x", str(installer), directory], check=True)
