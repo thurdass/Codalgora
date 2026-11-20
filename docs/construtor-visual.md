@@ -8,7 +8,7 @@ Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Constru
 1. Na paleta, use **Buscar componente** ou abra **Básicos** e **Entrada de dados**. A busca ignora maiúsculas e acentos; **Esc** limpa o filtro. Escolha Texto, Botão, Campo de texto, Área de texto, Caixa de seleção ou Lista suspensa, ou arraste o item para a área branca.
 2. Arraste o componente no canvas; a posição acompanha uma grade de 8 pixels. Use as oito alças azuis para redimensioná-lo; o tamanho aparece durante o movimento. **Organizar** distribui os componentes em coluna ou em uma grade de duas ou três colunas. Em **Janela e layout → Organização do formulário**, escolha Livre, Coluna responsiva ou Grade responsiva.
 3. Selecione o componente no canvas ou na árvore **Na interface**. A árvore mostra **Formulário** como raiz e seus componentes abaixo; selecionar a raiz abre as propriedades da janela. Edite nome, texto, posição e tamanho do componente no inspetor. No menu de contexto da árvore, renomeie, exclua ou mova o componente para cima ou para baixo; com a árvore focada, **F2** também inicia a renomeação.
-4. Clique numa área vazia do canvas ou em **Formulário** na árvore para selecionar a janela e ajustar seu título, dimensões e layout.
+4. Clique numa área vazia do canvas ou em **Formulário** na árvore para selecionar a janela e ajustar título, dimensões, layout e cor de fundo. Use o seletor ou informe `#RRGGBB`/`#RRGGBBAA`; **Restaurar padrão** volta ao fundo branco.
 5. Use **Vincular algoritmo .alg** para escolher o algoritmo que contém os procedimentos dos botões.
 6. Selecione um campo de texto ou uma caixa de seleção e escolha uma variável global escalar em **Variável Portugol**. Campos de texto recebem e devolvem valores; caixas de seleção aceitam variáveis `logico`; rótulos mostram o valor após a ação.
 7. Associe um procedimento: botões, caixas de seleção e listas suspensas executam ao ativar; campos de texto executam ao pressionar Enter. Parâmetros precisam ter uma variável global escalar com o mesmo nome; parâmetros `var` atualizam essa variável.
@@ -16,7 +16,7 @@ Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Constru
 9. Salve como `*.cgui.json`; use **Abrir** para continuar depois. O caminho do `.alg` é relativo ao formulário para facilitar mover ambos juntos.
 10. Para gerar um pacote independente para o sistema atual, rode o comando Gradle de exportação abaixo; o pacote inclui runtime Java e atalhos de execução.
 
-O formulário é um JSON versionado, separado do código Portugol, e mantém o caminho do algoritmo, as variáveis vinculadas e o procedimento associado a cada botão. A leitura valida a versão, os tipos conhecidos, os nomes únicos, os limites da janela e até 100 componentes. Um formulário alterado pede confirmação antes de ser descartado.
+O formulário é um JSON versionado, separado do código Portugol, e mantém o caminho do algoritmo, as variáveis vinculadas, o procedimento associado a cada botão e a cor opcional do fundo. A cor é preservada no esquema 1; arquivos antigos sem esse campo continuam usando o fundo branco. A leitura valida a versão, os tipos conhecidos, os nomes únicos, os limites da janela e até 100 componentes. Um formulário alterado pede confirmação antes de ser descartado.
 
 ## Limites atuais
 

@@ -28,6 +28,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -66,6 +67,8 @@ public final class GuiBuilderPane extends BorderPane {
   private Button undoButton, redoButton;
   private Spinner<Double> spacing, padding;
   private TextField formTitleField, formWidthField, formHeightField;
+  private TextField formBackgroundHex;
+  private ColorPicker formBackgroundPicker;
   private TextField paletteSearch;
   private ComboBox<GuiForm.LayoutMode> formLayoutField;
   private TextField nameField, textField, xField, yField, widthField, heightField;
@@ -525,6 +528,23 @@ public final class GuiBuilderPane extends BorderPane {
     addProperty(box, "Título da janela", formTitleField);
     addProperty(box, "Largura da janela", formWidthField);
     addProperty(box, "Altura da janela", formHeightField);
+    formBackgroundPicker = new ColorPicker(Color.WHITE);
+    formBackgroundPicker.setId("guiFormBackgroundColor");
+    formBackgroundPicker.setMaxWidth(Double.MAX_VALUE);
+    formBackgroundHex = field();
+    formBackgroundHex.setId("guiFormBackgroundHex");
+    formBackgroundHex.setPromptText("Padrão / #RRGGBB / #RRGGBBAA");
+    Label backgroundLabel = new Label("Cor de fundo do formulário");
+    backgroundLabel.getStyleClass().add("subtle");
+    Label backgroundHexLabel = new Label("Código hexadecimal");
+    backgroundHexLabel.getStyleClass().add("subtle");
+    Button resetBackground = new Button("Restaurar padrão");
+    resetBackground.setId("guiResetFormBackground");
+    resetBackground.setOnAction(event -> resetFormBackground());
+    HBox backgroundRow = new HBox(6, formBackgroundPicker, resetBackground);
+    HBox.setHgrow(formBackgroundPicker, Priority.ALWAYS);
+    box.getChildren()
+        .addAll(backgroundLabel, backgroundRow, backgroundHexLabel, formBackgroundHex);
     Label layoutLabel = new Label("Organização do formulário");
     layoutLabel.getStyleClass().add("subtle");
     box.getChildren().addAll(layoutLabel, formLayoutField);
@@ -606,6 +626,20 @@ public final class GuiBuilderPane extends BorderPane {
                 if (wasFocused && !focused) applyFormProperties();
               });
     }
+    formBackgroundPicker.setOnAction(
+        event -> {
+          if (!updatingInspector && formBackgroundPicker.getValue() != null) {
+            form.backgroundColor = colorHex(formBackgroundPicker.getValue());
+            formBackgroundHex.setText(form.backgroundColor);
+            applyFormBackground();
+            markChanged("Cor de fundo atualizada.");
+          }
+        });
+    formBackgroundHex.setOnAction(event -> applyFormBackgroundHex());
+    formBackgroundHex.focusedProperty().addListener(
+        (observable, wasFocused, focused) -> {
+          if (wasFocused && !focused) applyFormBackgroundHex();
+        });
     styleInspector = new GuiStyleInspector(() -> { tools.refreshAppearance(); markChanged("Aparência atualizada."); });
     inspector.getChildren().add(styleInspector);
     box.getChildren().add(inspector);
@@ -682,6 +716,7 @@ public final class GuiBuilderPane extends BorderPane {
     outline.refresh();
     if (selected != null && !form.elements.contains(selected)) selected = null;
     tools.render(selected);
+    applyFormBackground();
     if (selected == null) outline.getSelectionModel().select(formRoot);
     else outline.getSelectionModel().select(findOutlineItem(selected));
     updateFields();
@@ -818,6 +853,9 @@ public final class GuiBuilderPane extends BorderPane {
       formTitleField.setText(form.title);
       formWidthField.setText(number(form.width));
       formHeightField.setText(number(form.height));
+      formBackgroundHex.setText(Objects.toString(form.backgroundColor, ""));
+      formBackgroundPicker.setValue(
+          form.backgroundColor == null ? Color.WHITE : Color.web(form.backgroundColor));
       formLayoutField.setValue(form.layout);
       spacing.getValueFactory().setValue(form.spacing);
       padding.getValueFactory().setValue(form.padding);
@@ -937,6 +975,46 @@ public final class GuiBuilderPane extends BorderPane {
     } catch (IllegalArgumentException ex) {
       status.setText(ex.getMessage());
     }
+  }
+
+  private void applyFormBackgroundHex() {
+    if (updatingInspector) return;
+    String value = formBackgroundHex.getText().strip();
+    if (!value.isEmpty() && !value.matches("#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?")) {
+      status.setText("Use uma cor hexadecimal #RRGGBB ou #RRGGBBAA.");
+      formBackgroundHex.setText(Objects.toString(form.backgroundColor, ""));
+      return;
+    }
+    form.backgroundColor = value.isEmpty() ? null : value;
+    formBackgroundPicker.setValue(
+        form.backgroundColor == null ? Color.WHITE : Color.web(form.backgroundColor));
+    applyFormBackground();
+    markChanged("Cor de fundo atualizada.");
+  }
+
+  private void resetFormBackground() {
+    form.backgroundColor = null;
+    formBackgroundPicker.setValue(Color.WHITE);
+    formBackgroundHex.clear();
+    applyFormBackground();
+    markChanged("Cor de fundo padrão restaurada.");
+  }
+
+  private void applyFormBackground() {
+    canvas.setStyle(
+        form.backgroundColor == null
+            ? ""
+            : "-fx-background-color: " + form.backgroundColor + ";");
+  }
+
+  private String colorHex(Color color) {
+    int red = (int) Math.round(color.getRed() * 255);
+    int green = (int) Math.round(color.getGreen() * 255);
+    int blue = (int) Math.round(color.getBlue() * 255);
+    int alpha = (int) Math.round(color.getOpacity() * 255);
+    return alpha == 255
+        ? String.format(Locale.ROOT, "#%02x%02x%02x", red, green, blue)
+        : String.format(Locale.ROOT, "#%02x%02x%02x%02x", red, green, blue, alpha);
   }
 
   private void applyProperties() {
@@ -1111,6 +1189,7 @@ public final class GuiBuilderPane extends BorderPane {
     form.title = loaded.title;
     form.width = loaded.width;
     form.height = loaded.height;
+    form.backgroundColor = loaded.backgroundColor;
     form.layout = loaded.layout;
     form.spacing = loaded.spacing; form.padding = loaded.padding;
     form.algorithmPath = loaded.algorithmPath;
@@ -1170,6 +1249,7 @@ public final class GuiBuilderPane extends BorderPane {
       form.title = restored.title;
       form.width = restored.width;
       form.height = restored.height;
+      form.backgroundColor = restored.backgroundColor;
       form.layout = restored.layout;
       form.spacing = restored.spacing; form.padding = restored.padding;
       form.algorithmPath = restored.algorithmPath;
@@ -1421,6 +1501,8 @@ public final class GuiBuilderPane extends BorderPane {
       Scene scene = new Scene(content, form.width, form.height);
       scene.getStylesheets().add(stylesheet);
       scene.getRoot().setStyle(themeCss);
+      if (form.backgroundColor != null)
+        content.setStyle("-fx-background-color: " + form.backgroundColor + ";");
       preview.setScene(scene);
       if (activeSession != null) {
         preview.setOnHidden(event -> activeSession.stop());

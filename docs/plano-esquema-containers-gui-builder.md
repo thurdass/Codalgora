@@ -4,7 +4,7 @@ Este documento propõe como adicionar contêineres horizontais, verticais e em g
 
 ## Situação atual
 
-O esquema 1 usa `schemaVersion: 1` e uma lista plana `elements`. Cada elemento é um controle com `id`, `type`, `name`, `text`, geometria, aparência opcional e vínculos opcionais com algoritmo e variável. A organização do formulário (`FREE`, `VERTICAL` ou `GRID`), o espaçamento e o preenchimento pertencem à janela. `GuiFormStore` rejeita versões diferentes de 1. Formulários existentes dependem desses campos e de seus valores padrão.
+O esquema 1 usa `schemaVersion: 1` e uma lista plana `elements`. Cada elemento é um controle com `id`, `type`, `name`, `text`, geometria, aparência opcional e vínculos opcionais com algoritmo e variável. A janela mantém organização (`FREE`, `VERTICAL` ou `GRID`), espaçamento, preenchimento e cor de fundo opcional (`backgroundColor`, hexadecimal). `GuiFormStore` rejeita versões diferentes de 1. Formulários existentes sem a cor continuam usando o fundo branco.
 
 ## Decisões propostas para a versão 2
 

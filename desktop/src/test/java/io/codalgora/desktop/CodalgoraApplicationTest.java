@@ -1048,6 +1048,88 @@ class CodalgoraApplicationTest {
   }
 
   @Test
+  void formBackgroundColorPersistsThroughPreviewUndoAndReload() throws Exception {
+    GuiForm initial = new GuiForm();
+    initial.elements.add(
+        new GuiForm.Element(GuiForm.Type.BUTTON, "continuar", "Continuar", 16, 16, 140, 40));
+    Path source = directory.resolve("fundo.cgui.json");
+    Path saved = directory.resolve("fundo-salvo.cgui.json");
+    GuiFormStore.write(source, initial);
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            GuiBuilderPane pane = (GuiBuilderPane) builder.getScene().getRoot();
+            pane.loadForm(source);
+            pane.applyCss();
+            pane.layout();
+            TextField background = (TextField) pane.lookup("#guiFormBackgroundHex");
+            background.setText("#12345680");
+            background.fireEvent(new ActionEvent());
+            javafx.scene.layout.Pane designCanvas =
+                (javafx.scene.layout.Pane) pane.lookup("#guiCanvas");
+            pane.applyCss();
+            assertTrue(designCanvas.getStyle().contains("-fx-background-color: #12345680;"));
+            assertEquals(
+                javafx.scene.paint.Color.web("#12345680"),
+                designCanvas.getBackground().getFills().getFirst().getFill());
+            pane.saveForm(saved);
+            assertEquals("#12345680", GuiFormStore.read(saved).backgroundColor);
+
+            ((Button) pane.lookup("#guiUndo")).fire();
+            pane.saveForm(saved);
+            assertNull(GuiFormStore.read(saved).backgroundColor);
+            ((Button) pane.lookup("#guiRedo")).fire();
+            pane.saveForm(saved);
+            pane.loadForm(saved);
+            assertEquals("#12345680", ((TextField) pane.lookup("#guiFormBackgroundHex")).getText());
+
+            Stage preview = new Stage();
+            try {
+              GuiBuilderPane.openFormPreview(
+                  preview,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  saved,
+                  ignored -> {});
+              preview.getScene().getRoot().applyCss();
+              assertEquals(
+                  javafx.scene.paint.Color.web("#12345680"),
+                  ((javafx.scene.layout.Region) preview.getScene().getRoot())
+                      .getBackground().getFills().getFirst().getFill());
+            } finally {
+              preview.hide();
+            }
+
+            ((Button) pane.lookup("#guiResetFormBackground")).fire();
+            pane.saveForm(saved);
+            assertNull(GuiFormStore.read(saved).backgroundColor);
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
   void componentTreeRenamesAndDeletesWithValidationAndHistory() throws Exception {
     GuiForm initial = new GuiForm();
     initial.elements.add(

@@ -27,6 +27,18 @@ class GuiFormStoreTest {
   }
 
   @Test
+  void backgroundColorIsOptionalValidatedAndPersisted() {
+    GuiForm form = new GuiForm();
+    assertNull(GuiFormStore.deserialize(GuiFormStore.serialize(form)).backgroundColor);
+
+    form.backgroundColor = "#12345680";
+    assertEquals("#12345680", GuiFormStore.deserialize(GuiFormStore.serialize(form)).backgroundColor);
+
+    form.backgroundColor = "red; -fx-font-size: 99px";
+    assertThrows(IllegalArgumentException.class, () -> GuiFormStore.serialize(form));
+  }
+
+  @Test
   void preservesAlgorithmAndButtonProcedureBinding() {
     GuiForm form = new GuiForm();
     form.algorithmPath = "../algoritmos/boas-vindas.alg";

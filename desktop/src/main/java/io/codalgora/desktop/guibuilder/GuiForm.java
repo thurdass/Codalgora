@@ -10,6 +10,8 @@ public final class GuiForm {
   public String title = "Minha primeira interface";
   public double width = 420;
   public double height = 520;
+  /** Optional #RRGGBB or #RRGGBBAA canvas color; null keeps the default white background. */
+  public String backgroundColor;
   public LayoutMode layout = LayoutMode.FREE;
   public String algorithmPath;
   public double spacing = 12;

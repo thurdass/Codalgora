@@ -100,6 +100,9 @@ public final class GuiFormStore {
         || form.width < 320 || form.width > 1200
         || form.height < 240 || form.height > 1000)
       throw new IllegalArgumentException("Tamanho de janela fora dos limites permitidos.");
+    if (form.backgroundColor != null
+        && !form.backgroundColor.matches("#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?"))
+      throw new IllegalArgumentException("Use uma cor de fundo hexadecimal #RRGGBB ou #RRGGBBAA.");
     if (form.elements == null || form.elements.size() > MAX_ELEMENTS)
       throw new IllegalArgumentException("O formulário precisa ter até " + MAX_ELEMENTS + " componentes.");
     if (form.algorithmPath != null && form.algorithmPath.length() > 1000)
