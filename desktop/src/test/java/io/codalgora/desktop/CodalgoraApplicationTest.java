@@ -1132,6 +1132,73 @@ class CodalgoraApplicationTest {
   }
 
   @Test
+  void componentTreeReordersElementsAndPreservesSelectionAndHistory() throws Exception {
+    GuiForm initial = new GuiForm();
+    initial.elements.add(
+        new GuiForm.Element(GuiForm.Type.BUTTON, "primeiro", "Primeiro", 16, 16, 120, 38));
+    initial.elements.add(
+        new GuiForm.Element(GuiForm.Type.LABEL, "segundo", "Segundo", 80, 100, 180, 48));
+    initial.elements.add(
+        new GuiForm.Element(GuiForm.Type.TEXT_FIELD, "terceiro", "Terceiro", 80, 180, 180, 36));
+    Path source = directory.resolve("ordem.cgui.json");
+    Path saved = directory.resolve("ordem-salva.cgui.json");
+    GuiFormStore.write(source, initial);
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            GuiBuilderPane pane = (GuiBuilderPane) builder.getScene().getRoot();
+            pane.loadForm(source);
+            pane.applyCss();
+            pane.layout();
+            TreeView<?> tree = (TreeView<?>) pane.lookup("#guiOutline");
+            ContextMenu actions = tree.getContextMenu();
+            MenuItem moveUp = actions.getItems().get(3);
+            MenuItem moveDown = actions.getItems().get(4);
+            selectOutlineComponent(tree, 1);
+
+            moveUp.fire();
+            assertEquals("segundo", saveAndReadForm(pane, saved).elements.get(0).name);
+            assertEquals(
+                "segundo",
+                ((GuiForm.Element) tree.getSelectionModel().getSelectedItem().getValue()).name);
+            assertEquals("primeiro", GuiFormStore.read(source).elements.getFirst().name);
+            ((Button) pane.lookup("#guiUndo")).fire();
+            assertEquals("primeiro", saveAndReadForm(pane, saved).elements.getFirst().name);
+            ((Button) pane.lookup("#guiRedo")).fire();
+            assertEquals("segundo", saveAndReadForm(pane, saved).elements.getFirst().name);
+
+            selectOutlineComponent(tree, 0);
+            moveDown.fire();
+            assertEquals("primeiro", saveAndReadForm(pane, saved).elements.getFirst().name);
+            assertEquals("segundo", saveAndReadForm(pane, saved).elements.get(1).name);
+            assertEquals("terceiro", saveAndReadForm(pane, saved).elements.get(2).name);
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   void visualEditingHandlesTextAppearanceAndManagedLayouts() throws Exception {
     GuiForm initial = new GuiForm();

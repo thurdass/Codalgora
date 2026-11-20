@@ -260,12 +260,23 @@ public final class GuiBuilderPane extends BorderPane {
     MenuItem delete = new MenuItem("Excluir");
     delete.setId("guiOutlineDelete");
     delete.setOnAction(event -> removeSelected());
-    ContextMenu outlineMenu = new ContextMenu(rename, delete);
+    MenuItem moveUp = new MenuItem("Mover para cima");
+    moveUp.setId("guiOutlineMoveUp");
+    moveUp.setOnAction(event -> moveSelectedInOutline(-1));
+    MenuItem moveDown = new MenuItem("Mover para baixo");
+    moveDown.setId("guiOutlineMoveDown");
+    moveDown.setOnAction(event -> moveSelectedInOutline(1));
+    ContextMenu outlineMenu =
+        new ContextMenu(rename, delete, new SeparatorMenuItem(), moveUp, moveDown);
     outlineMenu.setOnShowing(
         event -> {
-          boolean hasComponent = selectedOutlineElement() != null;
+          GuiForm.Element element = selectedOutlineElement();
+          boolean hasComponent = element != null;
           rename.setDisable(!hasComponent);
           delete.setDisable(!hasComponent);
+          int index = hasComponent ? form.elements.indexOf(element) : -1;
+          moveUp.setDisable(index <= 0);
+          moveDown.setDisable(index < 0 || index >= form.elements.size() - 1);
         });
     outline.setContextMenu(outlineMenu);
     formRoot.setExpanded(true);
@@ -787,6 +798,17 @@ public final class GuiBuilderPane extends BorderPane {
       outline.refresh();
       return false;
     }
+  }
+
+  private void moveSelectedInOutline(int offset) {
+    if (selected == null) return;
+    int currentIndex = form.elements.indexOf(selected);
+    int targetIndex = currentIndex + offset;
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= form.elements.size()) return;
+    GuiForm.Element element = form.elements.remove(currentIndex);
+    form.elements.add(targetIndex, element);
+    render();
+    markChanged(offset < 0 ? "Componente movido para cima." : "Componente movido para baixo.");
   }
 
   private void updateFields() {
