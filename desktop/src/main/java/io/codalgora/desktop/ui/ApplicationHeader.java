@@ -9,10 +9,12 @@ import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.control.*;
 import javafx.scene.image.*;
 import javafx.scene.layout.*;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
 /** Existing branding, application menus, panel toggles and help dialog. */
@@ -170,13 +172,51 @@ public final class ApplicationHeader {
 
     Hyperlink profile = new Hyperlink("github.com/thurdass");
     profile.setOnAction(e -> openDocument.accept("https://github.com/thurdass"));
-    VBox content = new VBox(14, name, biography, profile);
+    Label supportTitle = new Label("Apoie o Codalgora ❤️");
+    supportTitle.getStyleClass().add("heading");
+    Label supportText =
+        paragraph(
+            "Se o Codalgora foi útil para você e deseja apoiar a continuidade do projeto, "
+                + "considere a possibilidade de fazer uma contribuição voluntária via Pix. "
+                + "Toda ajuda é bem-vinda e incentiva a evolução do projeto");
+    supportText.setTextAlignment(TextAlignment.CENTER);
+    Image pixImage =
+        new Image(
+            Objects.requireNonNull(
+                    getClass().getResource("/io/codalgora/desktop/pix-doacao.jpeg"),
+                    "Recurso pix-doacao.jpeg não encontrado")
+                .toExternalForm());
+    ImageView pixQr = new ImageView(pixImage);
+    pixQr.setId("pixDonationQr");
+    pixQr.setFitWidth(320);
+    pixQr.setFitHeight(320);
+    pixQr.setPreserveRatio(true);
+    pixQr.setSmooth(false);
+    StackPane qrCard = new StackPane(pixQr);
+    qrCard.setId("pixDonationCard");
+    qrCard.setAlignment(Pos.CENTER);
+    qrCard.setPadding(new Insets(12));
+    qrCard.setStyle(
+        "-fx-background-color: white; -fx-border-color: #d7d7d7; "
+            + "-fx-border-radius: 6; -fx-background-radius: 6;");
+    Label scanHint = paragraph("Escaneie com o aplicativo do seu banco para contribuir.");
+    scanHint.setTextAlignment(TextAlignment.CENTER);
+    Label optionalNote =
+        paragraph(
+            "A contribuição é opcional. O Codalgora é gratuito e continuará acessível para todos.");
+    optionalNote.getStyleClass().add("subtle");
+    optionalNote.setTextAlignment(TextAlignment.CENTER);
+    VBox donation = new VBox(12, supportTitle, supportText, qrCard, scanHint, optionalNote);
+    donation.setId("creditsDonationSection");
+    donation.setAlignment(Pos.CENTER);
+
+    VBox content = new VBox(14, name, biography, profile, new Separator(), donation);
     content.setPadding(new Insets(4, 8, 4, 8));
     ScrollPane scroll = new ScrollPane(content);
     scroll.setFitToWidth(true);
     scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
     scroll.setPrefViewportWidth(460);
-    scroll.setPrefViewportHeight(390);
+    scroll.setPrefViewportHeight(560);
     dialog.getDialogPane().setContent(scroll);
     dialog
         .getDialogPane()
