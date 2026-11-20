@@ -196,22 +196,15 @@ public final class GuiBuilderPane extends BorderPane {
     hint.setMaxWidth(160);
     hint.setMinHeight(Region.USE_PREF_SIZE);
     box.getChildren().addAll(heading, hint, new Separator());
-    for (GuiForm.Type type : GuiForm.Type.values()) {
-      Button item = new Button("+   " + type.label);
-      item.setId("palette-" + type.name());
-      item.setMaxWidth(Double.MAX_VALUE);
-      item.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-      item.setOnAction(e -> add(type, Double.NaN, Double.NaN));
-      item.setOnDragDetected(
-          e -> {
-            Dragboard drag = item.startDragAndDrop(TransferMode.COPY);
-            ClipboardContent content = new ClipboardContent();
-            content.putString(type.name());
-            drag.setContent(content);
-            e.consume();
-          });
-      box.getChildren().add(item);
-    }
+    box.getChildren().addAll(
+        paletteCategory("Básicos", "guiPaletteBasic", GuiForm.Type.LABEL, GuiForm.Type.BUTTON),
+        paletteCategory(
+            "Entrada de dados",
+            "guiPaletteInput",
+            GuiForm.Type.TEXT_FIELD,
+            GuiForm.Type.TEXT_AREA,
+            GuiForm.Type.CHECK_BOX,
+            GuiForm.Type.COMBO_BOX));
     Label treeHeading = new Label("Na interface");
     treeHeading.getStyleClass().add("section-heading");
     outline.setId("guiOutline");
@@ -239,6 +232,30 @@ public final class GuiBuilderPane extends BorderPane {
     VBox.setVgrow(outline, Priority.ALWAYS);
     box.getChildren().addAll(treeHeading, outline);
     return box;
+  }
+
+  private TitledPane paletteCategory(String title, String id, GuiForm.Type... types) {
+    VBox items = new VBox(4);
+    for (GuiForm.Type type : types) {
+      Button item = new Button("+   " + type.label);
+      item.setId("palette-" + type.name());
+      item.setMaxWidth(Double.MAX_VALUE);
+      item.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+      item.setOnAction(e -> add(type, Double.NaN, Double.NaN));
+      item.setOnDragDetected(
+          e -> {
+            Dragboard drag = item.startDragAndDrop(TransferMode.COPY);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(type.name());
+            drag.setContent(content);
+            e.consume();
+          });
+      items.getChildren().add(item);
+    }
+    TitledPane category = new TitledPane(title, items);
+    category.setId(id);
+    category.setExpanded(true);
+    return category;
   }
 
   private SplitPane workspace() {

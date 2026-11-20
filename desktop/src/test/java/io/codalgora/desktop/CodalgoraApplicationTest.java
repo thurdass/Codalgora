@@ -743,6 +743,53 @@ class CodalgoraApplicationTest {
   }
 
   @Test
+  void paletteGroupsEverySupportedControl() throws Exception {
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            TitledPane basic = (TitledPane) builder.getScene().lookup("#guiPaletteBasic");
+            TitledPane input = (TitledPane) builder.getScene().lookup("#guiPaletteInput");
+            assertEquals("Básicos", basic.getText());
+            assertEquals("Entrada de dados", input.getText());
+            assertEquals(
+                List.of("palette-LABEL", "palette-BUTTON"),
+                ((VBox) basic.getContent()).getChildren().stream()
+                    .map(node -> node.getId())
+                    .toList());
+            assertEquals(
+                List.of("palette-TEXT_FIELD", "palette-TEXT_AREA", "palette-CHECK_BOX", "palette-COMBO_BOX"),
+                ((VBox) input.getContent()).getChildren().stream()
+                    .map(node -> node.getId())
+                    .toList());
+            assertTrue(basic.isExpanded());
+            assertTrue(input.isExpanded());
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
   void guiBuilderWorkspaceDividersResizeAndFollowEveryTheme() throws Exception {
     Stage builder =
         fx(
