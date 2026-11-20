@@ -5,10 +5,10 @@ Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Constru
 
 ## Fluxo rápido
 
-1. Escolha Texto, Botão, Campo de texto, Área de texto, Caixa de seleção ou Lista suspensa na paleta, ou arraste o item para a área branca.
+1. Na paleta, use **Buscar componente** ou abra **Básicos** e **Entrada de dados**. A busca ignora maiúsculas e acentos; **Esc** limpa o filtro. Escolha Texto, Botão, Campo de texto, Área de texto, Caixa de seleção ou Lista suspensa, ou arraste o item para a área branca.
 2. Arraste o componente no canvas; a posição acompanha uma grade de 8 pixels. Use as oito alças azuis para redimensioná-lo; o tamanho aparece durante o movimento. **Organizar** distribui os componentes em coluna ou em uma grade de duas ou três colunas. Em **Janela e layout → Organização do formulário**, escolha Livre, Coluna responsiva ou Grade responsiva.
-3. Selecione o componente na tela ou na lista lateral e edite nome, texto, posição e tamanho.
-4. Ajuste título e dimensões da janela no inspetor.
+3. Selecione o componente no canvas ou na árvore **Na interface**. A árvore mostra **Formulário** como raiz e seus componentes abaixo; selecionar a raiz abre as propriedades da janela. Edite nome, texto, posição e tamanho do componente no inspetor.
+4. Clique numa área vazia do canvas ou em **Formulário** na árvore para selecionar a janela e ajustar seu título, dimensões e layout.
 5. Use **Vincular algoritmo .alg** para escolher o algoritmo que contém os procedimentos dos botões.
 6. Selecione um campo de texto ou uma caixa de seleção e escolha uma variável global escalar em **Variável Portugol**. Campos de texto recebem e devolvem valores; caixas de seleção aceitam variáveis `logico`; rótulos mostram o valor após a ação.
 7. Associe um procedimento: botões, caixas de seleção e listas suspensas executam ao ativar; campos de texto executam ao pressionar Enter. Parâmetros precisam ter uma variável global escalar com o mesmo nome; parâmetros `var` atualizam essa variável.
@@ -20,7 +20,7 @@ O formulário é um JSON versionado, separado do código Portugol, e mantém o c
 
 ## Limites atuais
 
-As opções da lista suspensa são separadas por `|` no inspetor. As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto, área de texto, lista suspensa ou caixa de seleção. Parâmetros de eventos devem corresponder pelo nome a uma variável global escalar; referências `var` precisam ter o mesmo tipo. O editor oferece Undo/Redo limitado ao histórico da sessão, comandos simples de organização e layouts responsivos na prévia. Contêineres aninhados, múltiplas janelas e sistema completo de projetos ainda não existem. Funções não podem ser chamadas como eventos. A sintaxe VisualG existente foi preservada.
+As opções da lista suspensa são separadas por `|` no inspetor. As variáveis vinculáveis são globais, escalares e mutáveis; vetores, constantes e variáveis locais não aparecem. Uma variável só pode receber entrada de um campo de texto, área de texto, lista suspensa ou caixa de seleção. Parâmetros de eventos devem corresponder pelo nome a uma variável global escalar; referências `var` precisam ter o mesmo tipo. A árvore atual organiza apenas os componentes diretamente no formulário; ainda não há renomeação ou reordenação por ela. O editor oferece Undo/Redo limitado ao histórico da sessão, comandos simples de organização e layouts responsivos na prévia. Contêineres aninhados, múltiplas janelas e sistema completo de projetos ainda não existem. Funções não podem ser chamadas como eventos. A sintaxe VisualG existente foi preservada.
 
 ## Exportar aplicativo independente
 
