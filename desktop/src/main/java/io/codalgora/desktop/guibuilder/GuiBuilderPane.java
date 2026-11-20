@@ -4,6 +4,7 @@ import io.codalgora.interpreter.CodalgoraEngine;
 import io.codalgora.interpreter.DebugSession;
 import io.codalgora.interpreter.Program;
 import java.io.IOException;
+import java.text.Normalizer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +49,8 @@ public final class GuiBuilderPane extends BorderPane {
   private final TreeView<Object> outline = new TreeView<>();
   private final Object formRootValue = new Object();
   private final TreeItem<Object> formRoot = new TreeItem<>(formRootValue);
+  private final List<TitledPane> paletteCategories = new ArrayList<>();
+  private final Map<Button, GuiForm.Type> paletteEntries = new LinkedHashMap<>();
   private final VBox inspector = new VBox(10);
   private final Label status = new Label("Arraste componentes para a tela ou escolha na paleta.");
   private final VBox eventProperty = new VBox(4);
@@ -58,10 +61,12 @@ public final class GuiBuilderPane extends BorderPane {
   private final Map<String, String> globalVariables = new LinkedHashMap<>();
   private final List<String> history = new ArrayList<>();
   private Label componentHeading;
+  private Label paletteEmpty;
   private TitledPane windowSection;
   private Button undoButton, redoButton;
   private Spinner<Double> spacing, padding;
   private TextField formTitleField, formWidthField, formHeightField;
+  private TextField paletteSearch;
   private ComboBox<GuiForm.LayoutMode> formLayoutField;
   private TextField nameField, textField, xField, yField, widthField, heightField;
   private GuiForm.Element selected;
@@ -195,16 +200,37 @@ public final class GuiBuilderPane extends BorderPane {
     hint.setWrapText(true);
     hint.setMaxWidth(160);
     hint.setMinHeight(Region.USE_PREF_SIZE);
-    box.getChildren().addAll(heading, hint, new Separator());
-    box.getChildren().addAll(
-        paletteCategory("Básicos", "guiPaletteBasic", GuiForm.Type.LABEL, GuiForm.Type.BUTTON),
+    paletteSearch = new TextField();
+    paletteSearch.setId("guiPaletteSearch");
+    paletteSearch.setPromptText("Buscar componente");
+    paletteSearch.setAccessibleText("Buscar componentes da paleta");
+    paletteSearch.setAccessibleHelp("Filtra por nome ou tipo. Pressione Escape para limpar a busca.");
+    paletteSearch.textProperty().addListener((o, old, query) -> filterPalette(query));
+    paletteSearch.setOnKeyPressed(
+        event -> {
+          if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE && !paletteSearch.getText().isEmpty()) {
+            paletteSearch.clear();
+            event.consume();
+          }
+        });
+    box.getChildren().addAll(heading, hint, paletteSearch, new Separator());
+    TitledPane basic =
+        paletteCategory("Básicos", "guiPaletteBasic", GuiForm.Type.LABEL, GuiForm.Type.BUTTON);
+    TitledPane inputs =
         paletteCategory(
             "Entrada de dados",
             "guiPaletteInput",
             GuiForm.Type.TEXT_FIELD,
             GuiForm.Type.TEXT_AREA,
             GuiForm.Type.CHECK_BOX,
-            GuiForm.Type.COMBO_BOX));
+            GuiForm.Type.COMBO_BOX);
+    paletteEmpty = new Label("Nenhum componente encontrado.");
+    paletteEmpty.setId("guiPaletteEmpty");
+    paletteEmpty.getStyleClass().add("subtle");
+    paletteEmpty.setWrapText(true);
+    paletteEmpty.setVisible(false);
+    paletteEmpty.setManaged(false);
+    box.getChildren().addAll(basic, inputs, paletteEmpty);
     Label treeHeading = new Label("Na interface");
     treeHeading.getStyleClass().add("section-heading");
     outline.setId("guiOutline");
@@ -241,6 +267,7 @@ public final class GuiBuilderPane extends BorderPane {
       item.setId("palette-" + type.name());
       item.setMaxWidth(Double.MAX_VALUE);
       item.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+      item.setAccessibleHelp("Adiciona " + type.label + " ao formulário.");
       item.setOnAction(e -> add(type, Double.NaN, Double.NaN));
       item.setOnDragDetected(
           e -> {
@@ -251,11 +278,47 @@ public final class GuiBuilderPane extends BorderPane {
             e.consume();
           });
       items.getChildren().add(item);
+      paletteEntries.put(item, type);
     }
     TitledPane category = new TitledPane(title, items);
     category.setId(id);
     category.setExpanded(true);
+    paletteCategories.add(category);
     return category;
+  }
+
+  private void filterPalette(String query) {
+    String normalizedQuery = normalizePaletteText(query.strip());
+    List<String> terms =
+        normalizedQuery.isEmpty() ? List.of() : List.of(normalizedQuery.split("\\s+"));
+    int matchingEntries = 0;
+    for (TitledPane category : paletteCategories) {
+      VBox items = (VBox) category.getContent();
+      int categoryMatches = 0;
+      for (Node node : items.getChildren()) {
+        Button button = (Button) node;
+        GuiForm.Type type = paletteEntries.get(button);
+        String searchable =
+            normalizePaletteText(type.label + " " + type.name() + " " + type.defaultText);
+        boolean matches = terms.stream().allMatch(searchable::contains);
+        button.setVisible(matches);
+        button.setManaged(matches);
+        if (matches) categoryMatches++;
+      }
+      category.setVisible(categoryMatches > 0);
+      category.setManaged(categoryMatches > 0);
+      if (categoryMatches > 0 && !terms.isEmpty()) category.setExpanded(true);
+      matchingEntries += categoryMatches;
+    }
+    boolean noResults = !terms.isEmpty() && matchingEntries == 0;
+    paletteEmpty.setVisible(noResults);
+    paletteEmpty.setManaged(noResults);
+  }
+
+  private String normalizePaletteText(String value) {
+    return Normalizer.normalize(value, Normalizer.Form.NFD)
+        .replaceAll("\\p{M}+", "")
+        .toLowerCase(Locale.ROOT);
   }
 
   private SplitPane workspace() {

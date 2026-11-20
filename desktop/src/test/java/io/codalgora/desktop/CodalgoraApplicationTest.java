@@ -790,6 +790,77 @@ class CodalgoraApplicationTest {
   }
 
   @Test
+  void paletteSearchFiltersByNameAndShowsRecoveryForNoResults() throws Exception {
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            TextField search = (TextField) builder.getScene().lookup("#guiPaletteSearch");
+            TitledPane basic = (TitledPane) builder.getScene().lookup("#guiPaletteBasic");
+            TitledPane input = (TitledPane) builder.getScene().lookup("#guiPaletteInput");
+            Button checkBox = (Button) builder.getScene().lookup("#palette-CHECK_BOX");
+            Button textField = (Button) builder.getScene().lookup("#palette-TEXT_FIELD");
+
+            search.setText("selecao");
+            assertFalse(basic.isManaged());
+            assertTrue(input.isManaged());
+            assertTrue(checkBox.isManaged());
+            assertFalse(textField.isManaged());
+
+            search.setText("CAMPO");
+            assertTrue(textField.isManaged());
+            assertFalse(checkBox.isManaged());
+
+            search.setText("nao existe");
+            assertTrue(((Label) builder.getScene().lookup("#guiPaletteEmpty")).isManaged());
+            assertFalse(basic.isManaged());
+            assertFalse(input.isManaged());
+
+            search.clear();
+            assertFalse(((Label) builder.getScene().lookup("#guiPaletteEmpty")).isManaged());
+            assertTrue(basic.isManaged());
+            assertTrue(input.isManaged());
+            assertTrue(checkBox.isManaged());
+            assertTrue(textField.isManaged());
+
+            search.setText("campo");
+            textField.fire();
+            assertEquals(
+                1,
+                ((javafx.scene.layout.Pane) builder.getScene().lookup("#guiCanvas"))
+                    .getChildren()
+                    .size());
+            Event.fireEvent(
+                search,
+                new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE,
+                    false, false, false, false));
+            assertTrue(search.getText().isEmpty());
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
   void guiBuilderWorkspaceDividersResizeAndFollowEveryTheme() throws Exception {
     Stage builder =
         fx(
