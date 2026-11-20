@@ -1,6 +1,6 @@
 # Construtor visual (protótipo local)
 
-O protótipo permite desenhar e pré-visualizar uma interface JavaFX sem escrever código Java, além de ligar cliques de botões a procedimentos Portugol.
+O protótipo permite desenhar e pré-visualizar uma interface JavaFX sem escrever código Java, além de ligar cliques de botões a procedimentos Portugol. O Construtor Visual abre maximizado para ocupar a área de trabalho; a barra do sistema continua disponível para restaurar ou redimensionar a janela.
 Ele tem um menu próprio na barra superior, logo depois de **Editar**: **Construtor visual → Abrir construtor visual…**.
 
 ## Fluxo rápido

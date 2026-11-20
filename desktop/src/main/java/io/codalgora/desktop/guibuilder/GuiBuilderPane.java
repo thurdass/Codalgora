@@ -143,6 +143,7 @@ public final class GuiBuilderPane extends BorderPane {
         event -> {
           if (!builder.confirmDiscard()) event.consume();
         });
+    stage.setMaximized(true);
     stage.show();
   }
 

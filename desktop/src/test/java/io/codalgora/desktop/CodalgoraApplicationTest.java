@@ -1130,6 +1130,38 @@ class CodalgoraApplicationTest {
   }
 
   @Test
+  void guiBuilderOpensMaximized() throws Exception {
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            assertTrue(builder.isMaximized());
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
   void componentTreeRenamesAndDeletesWithValidationAndHistory() throws Exception {
     GuiForm initial = new GuiForm();
     initial.elements.add(
