@@ -297,6 +297,10 @@ class CodalgoraApplicationTest {
           assertEquals("Editar", menuBar.getMenus().get(1).getText());
           Menu builderMenu = menuBar.getMenus().get(2);
           assertEquals("Construtor visual", builderMenu.getText());
+          assertEquals("Créditos", menuBar.getMenus().get(3).getText());
+          Menu helpMenu = menuBar.getMenus().get(5);
+          assertEquals("Ajuda", helpMenu.getText());
+          assertTrue(helpMenu.getItems().stream().noneMatch(item -> item.getText().equals("Créditos")));
           MenuItem openBuilder = builderMenu.getItems().getFirst();
           assertEquals("Abrir construtor visual…", openBuilder.getText());
           openBuilder.fire();
