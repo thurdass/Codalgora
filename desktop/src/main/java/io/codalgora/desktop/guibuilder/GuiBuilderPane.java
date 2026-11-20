@@ -100,7 +100,13 @@ public final class GuiBuilderPane extends BorderPane {
             });
     addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
       if (event.getTarget() instanceof TextInputControl) return;
-      if (event.getCode() == javafx.scene.input.KeyCode.F2) { tools.editInline(); event.consume(); }
+      if (event.getCode() == javafx.scene.input.KeyCode.F2) {
+        TreeItem<Object> treeItem = outline.getSelectionModel().getSelectedItem();
+        if (outline.isFocused() && treeItem != null && treeItem != formRoot)
+          outline.edit(treeItem);
+        else tools.editInline();
+        event.consume();
+      }
       else if (event.getCode() == javafx.scene.input.KeyCode.DELETE) { removeSelected(); event.consume(); }
       else if (event.isShortcutDown()) {
         switch (event.getCode()) {
@@ -235,24 +241,93 @@ public final class GuiBuilderPane extends BorderPane {
     treeHeading.getStyleClass().add("section-heading");
     outline.setId("guiOutline");
     outline.getStyleClass().add("explorer");
+    outline.setEditable(true);
+    outline.setOnEditCommit(
+        event -> {
+          Object value = event.getTreeItem().getValue();
+          if (value instanceof GuiForm.Element element) {
+            event.getTreeItem().setValue(element);
+            renameElement(element, String.valueOf(event.getNewValue()));
+          }
+        });
+    MenuItem rename = new MenuItem("Renomear");
+    rename.setId("guiOutlineRename");
+    rename.setOnAction(
+        event -> {
+          TreeItem<Object> item = outline.getSelectionModel().getSelectedItem();
+          if (item != null && item != formRoot) outline.edit(item);
+        });
+    MenuItem delete = new MenuItem("Excluir");
+    delete.setId("guiOutlineDelete");
+    delete.setOnAction(event -> removeSelected());
+    ContextMenu outlineMenu = new ContextMenu(rename, delete);
+    outlineMenu.setOnShowing(
+        event -> {
+          boolean hasComponent = selectedOutlineElement() != null;
+          rename.setDisable(!hasComponent);
+          delete.setDisable(!hasComponent);
+        });
+    outline.setContextMenu(outlineMenu);
     formRoot.setExpanded(true);
     outline.setRoot(formRoot);
     outline.setCellFactory(
         tree ->
             new TreeCell<>() {
+              private TextField editor;
+
               @Override
               protected void updateItem(Object item, boolean empty) {
                 super.updateItem(item, empty);
+                setEditable(!empty && item instanceof GuiForm.Element);
                 if (empty) {
+                  setGraphic(null);
                   setText(null);
                   setTooltip(null);
                 } else if (getTreeItem() == formRoot) {
+                  setGraphic(null);
                   setText("Formulário");
                   setTooltip(new Tooltip(form.title));
                 } else if (item instanceof GuiForm.Element element) {
-                  setText(element.name);
+                  if (isEditing() && editor != null) {
+                    setText(null);
+                    setGraphic(editor);
+                  } else {
+                    setGraphic(null);
+                    setText(element.name);
+                  }
                   setTooltip(new Tooltip(element.type.label + " · " + element.name));
                 }
+              }
+
+              @Override
+              public void startEdit() {
+                if (!(getItem() instanceof GuiForm.Element element)) return;
+                super.startEdit();
+                editor = new TextField(element.name);
+                editor.setId("guiOutlineNameEditor");
+                editor.setOnAction(event -> commitEdit(editor.getText()));
+                editor.setOnKeyPressed(
+                    event -> {
+                      if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                        cancelEdit();
+                        event.consume();
+                      }
+                    });
+                editor.focusedProperty().addListener(
+                    (observable, wasFocused, focused) -> {
+                      if (wasFocused && !focused && isEditing()) commitEdit(editor.getText());
+                    });
+                setText(null);
+                setGraphic(editor);
+                editor.selectAll();
+                editor.requestFocus();
+              }
+
+              @Override
+              public void cancelEdit() {
+                super.cancelEdit();
+                setGraphic(null);
+                if (getItem() instanceof GuiForm.Element element) setText(element.name);
               }
             });
     VBox.setVgrow(outline, Priority.ALWAYS);
@@ -681,6 +756,39 @@ public final class GuiBuilderPane extends BorderPane {
     updateFields();
   }
 
+  private GuiForm.Element selectedOutlineElement() {
+    TreeItem<Object> item = outline.getSelectionModel().getSelectedItem();
+    return item != null && item.getValue() instanceof GuiForm.Element element ? element : null;
+  }
+
+  private String validatedComponentName(GuiForm.Element element, String candidate) {
+    String name = candidate.strip();
+    if (name.isEmpty()) throw new IllegalArgumentException("Informe um nome.");
+    if (name.length() > 80 || !name.matches("[A-Za-z_][A-Za-z0-9_]*"))
+      throw new IllegalArgumentException(
+          "Use até 80 letras sem acento, números e _; comece com letra ou _.");
+    for (GuiForm.Element other : form.elements)
+      if (other != element && other.name.equalsIgnoreCase(name))
+        throw new IllegalArgumentException("Já existe um componente com esse nome.");
+    return name;
+  }
+
+  private boolean renameElement(GuiForm.Element element, String candidate) {
+    try {
+      String name = validatedComponentName(element, candidate);
+      if (element.name.equals(name)) return true;
+      element.name = name;
+      selected = element;
+      render();
+      markChanged("Componente renomeado.");
+      return true;
+    } catch (IllegalArgumentException ex) {
+      status.setText(ex.getMessage());
+      outline.refresh();
+      return false;
+    }
+  }
+
   private void updateFields() {
     updatingInspector = true;
     try {
@@ -812,13 +920,7 @@ public final class GuiBuilderPane extends BorderPane {
   private void applyProperties() {
     if (updatingInspector || selected == null) return;
     try {
-      String name = nameField.getText().strip();
-      if (name.isEmpty()) throw new IllegalArgumentException("Informe um nome.");
-      if (!name.matches("[A-Za-z_][A-Za-z0-9_]*"))
-        throw new IllegalArgumentException("Use letras sem acento, números e _; comece com letra ou _.");
-      for (GuiForm.Element element : form.elements)
-        if (element != selected && element.name.equalsIgnoreCase(name))
-          throw new IllegalArgumentException("Já existe um componente com esse nome.");
+      String name = validatedComponentName(selected, nameField.getText());
       selected.name = name;
       selected.text = textField.getText();
       selected.width = bounded(widthField.getText(), 50, form.width, "Largura");

@@ -742,6 +742,11 @@ class CodalgoraApplicationTest {
     outline.getSelectionModel().select(outline.getRoot().getChildren().get(index));
   }
 
+  private GuiForm saveAndReadForm(GuiBuilderPane pane, Path path) throws Exception {
+    pane.saveForm(path);
+    return GuiFormStore.read(path);
+  }
+
   @Test
   void paletteGroupsEverySupportedControl() throws Exception {
     Stage builder =
@@ -1031,6 +1036,90 @@ class CodalgoraApplicationTest {
             assertEquals("calcular", reopened.elements.getFirst().name);
             assertEquals("Resultado", reopened.elements.get(1).text);
             assertNotNull(reopened.elements.getFirst().appearance);
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
+  void componentTreeRenamesAndDeletesWithValidationAndHistory() throws Exception {
+    GuiForm initial = new GuiForm();
+    initial.elements.add(
+        new GuiForm.Element(GuiForm.Type.BUTTON, "calcular", "Calcular", 16, 16, 120, 38));
+    initial.elements.add(
+        new GuiForm.Element(GuiForm.Type.LABEL, "resultado", "Resultado", 80, 200, 180, 48));
+    Path source = directory.resolve("arvore.cgui.json");
+    Path saved = directory.resolve("arvore-salva.cgui.json");
+    GuiFormStore.write(source, initial);
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            GuiBuilderPane pane = (GuiBuilderPane) builder.getScene().getRoot();
+            pane.loadForm(source);
+            pane.applyCss();
+            pane.layout();
+            TreeView<?> tree = (TreeView<?>) pane.lookup("#guiOutline");
+            ContextMenu actions = tree.getContextMenu();
+            MenuItem rename = actions.getItems().get(0);
+            MenuItem delete = actions.getItems().get(1);
+            selectOutlineComponent(tree, 0);
+
+            rename.fire();
+            pane.applyCss();
+            pane.layout();
+            TextField editor = (TextField) tree.lookup("#guiOutlineNameEditor");
+            assertNotNull(editor);
+            editor.setText("resultado");
+            editor.fireEvent(new ActionEvent());
+            assertEquals("calcular", GuiFormStore.read(source).elements.getFirst().name);
+            assertTrue(
+                ((Label) ((VBox) pane.lookup(".statusbar")).getChildren().getFirst())
+                    .getText()
+                    .contains("Já existe"));
+
+            rename.fire();
+            pane.applyCss();
+            pane.layout();
+            editor = (TextField) tree.lookup("#guiOutlineNameEditor");
+            assertNotNull(editor);
+            editor.setText("calcular_principal");
+            editor.fireEvent(new ActionEvent());
+            assertEquals("calcular_principal", saveAndReadForm(pane, saved).elements.getFirst().name);
+            ((Button) pane.lookup("#guiUndo")).fire();
+            assertEquals("calcular", saveAndReadForm(pane, saved).elements.getFirst().name);
+            ((Button) pane.lookup("#guiRedo")).fire();
+            assertEquals("calcular_principal", saveAndReadForm(pane, saved).elements.getFirst().name);
+
+            selectOutlineComponent(tree, 0);
+            delete.fire();
+            assertEquals(1, tree.getRoot().getChildren().size());
+            assertEquals(1, ((javafx.scene.layout.Pane) pane.lookup("#guiCanvas")).getChildren().size());
+            ((Button) pane.lookup("#guiUndo")).fire();
+            assertEquals(2, tree.getRoot().getChildren().size());
+            assertEquals("calcular_principal", saveAndReadForm(pane, saved).elements.getFirst().name);
+            pane.loadForm(saved);
+            assertEquals("calcular_principal", GuiFormStore.read(saved).elements.getFirst().name);
             return null;
           });
     } finally {
