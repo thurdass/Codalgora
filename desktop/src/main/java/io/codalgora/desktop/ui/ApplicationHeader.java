@@ -4,6 +4,7 @@ import static io.codalgora.desktop.ui.components.IdeControls.*;
 
 import io.codalgora.desktop.documents.DocumentManager;
 import io.codalgora.desktop.documents.EditorDocument;
+import io.codalgora.desktop.guibuilder.GuiBuilderPane;
 import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -24,6 +25,7 @@ public final class ApplicationHeader {
       Stage stage,
       DocumentManager documentManager,
       BooleanSupplier running,
+      Runnable openGuiBuilder,
       Runnable toggleFiles,
       Runnable toggleInspector,
       Menu themes,
@@ -74,6 +76,10 @@ public final class ApplicationHeader {
           });
       edit.getItems().add(item);
     }
+    Menu visualBuilder = new Menu("Construtor visual");
+    MenuItem openVisualBuilder = new MenuItem("Abrir construtor visual…");
+    openVisualBuilder.setOnAction(e -> openGuiBuilder.run());
+    visualBuilder.getItems().add(openVisualBuilder);
     Menu help = new Menu("Ajuda");
     MenuItem guide = new MenuItem("Guia rápido e atalhos");
     guide.setOnAction(e -> showGuide());
@@ -86,7 +92,7 @@ public final class ApplicationHeader {
     MenuItem showInspector = new MenuItem("Depuração");
     showInspector.setOnAction(e -> toggleInspector.run());
     display.getItems().addAll(showFiles, showInspector, new SeparatorMenuItem(), themes);
-    MenuBar menu = new MenuBar(file, edit, display, help);
+    MenuBar menu = new MenuBar(file, edit, visualBuilder, display, help);
     Region space = new Region();
     HBox.setHgrow(space, Priority.ALWAYS);
     filesToggle = iconButton("files", "Mostrar ou ocultar arquivos (Ctrl+B)", toggleFiles);

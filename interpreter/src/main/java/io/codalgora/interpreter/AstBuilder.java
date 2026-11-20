@@ -72,6 +72,7 @@ final class AstBuilder extends PortugolBaseVisitor<Object> {
       routines.add(
           new Routine(
               id(r.ID().getText()),
+              r.FUNCAO() != null,
               List.copyOf(params),
               declarations(r.declarations()),
               block(r.block())));

@@ -14,6 +14,7 @@ public record Program(
 
   public record Routine(
       String name,
+      boolean function,
       List<Parameter> parameters,
       List<Declaration> declarations,
       List<Statement> body) {}

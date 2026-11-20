@@ -6,6 +6,7 @@ val javafxVersion = "21.0.13"
 dependencies {
     implementation(project(":interpreter"))
     implementation("org.fxmisc.richtext:richtextfx:0.11.7")
+    implementation("com.google.code.gson:gson:2.11.0")
     for (module in listOf("base", "graphics", "controls")) {
         implementation("org.openjfx:javafx-$module:$javafxVersion:$javafxPlatform")
     }
@@ -41,6 +42,77 @@ val appImage = tasks.register<Exec>("jpackageAppImage") {
             "--add-modules", "java.base,java.desktop,java.logging,java.prefs,java.xml,jdk.unsupported,java.net.http")
     }
 }
+
+val guiExportDirectory = layout.buildDirectory.dir("gui-export")
+val appImageName = if (hostOs.isMacOsX) "Codalgora.app" else "Codalgora"
+val stageGuiProject = tasks.register("stageGuiProject") {
+    group = "distribution"
+    description = "Prepare a portable visual form and Portugol source for the exported app"
+    inputs.property("guiFormPath", providers.gradleProperty("guiForm").orElse(""))
+    inputs.property("guiAlgorithmPath", providers.gradleProperty("guiAlgorithm").orElse(""))
+    inputs.files(provider {
+        listOfNotNull(project.findProperty("guiForm"), project.findProperty("guiAlgorithm"))
+            .map { file(it.toString()) }
+    }).withPropertyName("guiProjectFiles")
+    outputs.dir(guiExportDirectory)
+    doLast {
+        val formPath = project.findProperty("guiForm")?.toString()
+            ?: throw GradleException("Informe -PguiForm=/caminho/interface.cgui.json")
+        val algorithmPath = project.findProperty("guiAlgorithm")?.toString()
+            ?: throw GradleException("Informe -PguiAlgorithm=/caminho/algoritmo.alg")
+        val formFile = file(formPath)
+        val algorithmFile = file(algorithmPath)
+        if (!formFile.isFile || !algorithmFile.isFile)
+            throw GradleException("Os arquivos do formulário e do algoritmo precisam existir.")
+        val projectOutput = guiExportDirectory.get().file("Projeto").asFile
+        projectOutput.deleteRecursively()
+        projectOutput.mkdirs()
+        @Suppress("UNCHECKED_CAST")
+        val form = groovy.json.JsonSlurper().parse(formFile) as MutableMap<String, Any?>
+        form["algorithmPath"] = "algoritmo.alg"
+        projectOutput.resolve("interface.cgui.json").writeText(
+            groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(form)), Charsets.UTF_8
+        )
+        algorithmFile.copyTo(projectOutput.resolve("algoritmo.alg"), overwrite = true)
+        val shellLauncher = guiExportDirectory.get().file("Executar.sh").asFile
+        shellLauncher.writeText(
+            "#!/bin/sh\nBASE=\"${'$'}(CDPATH= cd -- \"${'$'}(dirname -- \"${'$'}0\")\" && pwd)\"\n"
+                + "\"${'$'}BASE/CodalgoraApp/${if (hostOs.isMacOsX) "Contents/MacOS/Codalgora" else "bin/Codalgora"}\" --gui-form \"${'$'}BASE/Projeto/interface.cgui.json\"\n",
+            Charsets.UTF_8
+        )
+        shellLauncher.setExecutable(true)
+        guiExportDirectory.get().file("Executar.bat").asFile.writeText(
+            "@echo off\r\n\"%~dp0CodalgoraApp\\Codalgora.exe\" --gui-form \"%~dp0Projeto\\interface.cgui.json\"\r\n",
+            Charsets.UTF_8
+        )
+    }
+}
+
+tasks.register<Zip>("exportGuiApplication") {
+    group = "distribution"
+    description = "Create a self-contained visual application archive for the host platform"
+    dependsOn(appImage, stageGuiProject)
+    archiveFileName.set("codalgora-visual-app.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    from(appImageDirectory.map { it.dir(appImageName) }) {
+        into("CodalgoraApp")
+        filePermissions { unix("755") }
+    }
+    from(guiExportDirectory) {
+        include("Projeto/**")
+        filePermissions { unix("644") }
+    }
+    if (hostOs.isWindows) {
+        from(guiExportDirectory.map { it.file("Executar.bat") }) {
+            filePermissions { unix("644") }
+        }
+    } else {
+        from(guiExportDirectory.map { it.file("Executar.sh") }) {
+            filePermissions { unix("755") }
+        }
+    }
+}
+
 tasks.register<Exec>("jpackageInstaller") {
     group = "distribution"
     description = "Create the native installer on the current host (deb on Linux, exe on Windows)"

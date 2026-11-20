@@ -43,6 +43,11 @@ public final class CodalgoraEngine {
     return new DebugSession(parse(source), input, output, observer);
   }
 
+  public static DebugSession createInteractiveSession(
+      String source, InputProvider input, Consumer<String> output, Consumer<Snapshot> observer) {
+    return new DebugSession(parse(source), input, output, observer);
+  }
+
   public static Snapshot run(String source, InputProvider input, Consumer<String> output) {
     return createSession(source, input, output, s -> {}).start(false).join();
   }

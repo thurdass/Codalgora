@@ -4,6 +4,7 @@ import io.codalgora.desktop.debug.DebuggerPane;
 import io.codalgora.desktop.documents.DocumentManager;
 import io.codalgora.desktop.documents.EditorDocument;
 import io.codalgora.desktop.execution.ExecutionController;
+import io.codalgora.desktop.guibuilder.GuiBuilderPane;
 import io.codalgora.desktop.terminal.TerminalPane;
 import io.codalgora.desktop.ui.ApplicationHeader;
 import io.codalgora.desktop.ui.StatusBar;
@@ -55,6 +56,17 @@ public final class CodalgoraApplication extends Application {
   @Override
   public void start(Stage stage) {
     this.stage = stage;
+    List<String> startupArgs = getParameters() == null ? List.of() : getParameters().getRaw();
+    int formArgument = startupArgs.indexOf("--gui-form");
+    if (formArgument >= 0 && formArgument + 1 < startupArgs.size()) {
+      GuiBuilderPane.openFormPreview(
+          stage,
+          Objects.requireNonNull(getClass().getResource("codalgora.css")).toExternalForm(),
+          EditorTheme.saved().css(),
+          Path.of(startupArgs.get(formArgument + 1)),
+          System.out::print);
+      return;
+    }
     documentManager =
         new DocumentManager(
             stage,
@@ -82,6 +94,11 @@ public final class CodalgoraApplication extends Application {
             stage,
             documentManager,
             execution::isRunning,
+            () -> GuiBuilderPane.open(
+                stage,
+                Objects.requireNonNull(getClass().getResource("codalgora.css")).toExternalForm(),
+                EditorTheme.saved().css(),
+                terminalPane::appendOutput),
             () -> workspace.toggleFiles(),
             () -> workspace.toggleInspector(),
             themeMenu(),

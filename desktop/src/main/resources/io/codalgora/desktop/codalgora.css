@@ -139,3 +139,32 @@
 .activity-rail { -fx-background-color: -alg-panel; -fx-padding: 8 3; -fx-border-color: transparent -alg-line transparent transparent; -fx-border-width: 0 1 0 0; -fx-min-width: 42; }
 .activity-rail .icon-button { -fx-min-height: 36; -fx-background-radius: 0; }
 .activity-rail .icon-button:selected { -fx-border-color: transparent transparent transparent -alg-accent; -fx-border-width: 0 0 0 2; }
+.gui-builder { -fx-background-color: -alg-editor; }
+.gui-workspace { -fx-background-color: -alg-panel; -fx-background-insets: 0; -fx-padding: 0; }
+.gui-workspace .split-pane-divider { -fx-background-color: -alg-line; -fx-padding: 0 3; -fx-background-insets: 0; }
+.gui-workspace .split-pane-divider:hover, .gui-workspace .split-pane-divider:pressed { -fx-background-color: -alg-accent; }
+.gui-side { -fx-background-color: -alg-panel; -fx-border-color: -alg-line; -fx-border-width: 0 1 0 0; }
+.gui-side:last-child { -fx-border-width: 0 0 0 1; }
+.gui-properties-scroll { -fx-background-color: -alg-panel; -fx-background: -alg-panel; -fx-border-color: -alg-line; -fx-border-width: 0 0 0 1; }
+.gui-properties-scroll > .viewport { -fx-background-color: -alg-panel; }
+.gui-stage { -fx-background-color: -alg-editor; }
+.gui-canvas, .gui-preview-canvas { -fx-background-color: white; -fx-border-color: #c7cdd3; -fx-border-width: 1; }
+.gui-canvas .gui-component { -fx-border-color: transparent; -fx-border-width: 1; -fx-border-radius: 3; }
+.gui-canvas .gui-component:selected { -fx-border-color: #42a5f5; }
+.gui-canvas .label, .gui-preview-canvas .label, .gui-canvas .check-box, .gui-preview-canvas .check-box { -fx-text-fill: #20262d; }
+.gui-canvas .button, .gui-preview-canvas .button { -fx-background-color: #1677c8; -fx-text-fill: white; -fx-padding: 7 12; }
+.gui-canvas .button:hover, .gui-preview-canvas .button:hover { -fx-background-color: #0e639f; -fx-text-fill: white; }
+.gui-canvas .text-input, .gui-preview-canvas .text-input { -fx-background-color: white; -fx-text-fill: #20262d; -fx-prompt-text-fill: #687480; -fx-border-color: #8c969f; -fx-border-radius: 3; -fx-background-radius: 3; }
+.gui-canvas .text-input:focused, .gui-preview-canvas .text-input:focused { -fx-border-color: #1677c8; }
+.gui-scroll { -fx-background-color: -alg-editor; -fx-background: -alg-editor; -fx-border-width: 0; }
+.gui-scroll > .viewport { -fx-background-color: -alg-editor; }
+.gui-builder .list-view { -fx-background-color: transparent; }
+.gui-builder .list-cell { -fx-background-color: transparent; -fx-padding: 7 5; }
+.gui-builder .list-cell:filled:selected { -fx-background-color: -alg-selection; }
+.gui-builder .tree-view { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; -fx-border-width: 0; }
+.gui-builder .tree-cell { -fx-background-color: transparent; -fx-text-fill: -alg-muted; -fx-padding: 7 5; }
+.gui-builder .tree-cell:hover { -fx-background-color: -alg-hover; }
+.gui-builder .tree-cell:selected { -fx-background-color: -alg-selection; -fx-text-fill: -alg-text; }
+.gui-properties-scroll .text-field { -fx-background-color: -alg-editor; -fx-border-color: -alg-line; -fx-border-radius: 3; -fx-background-radius: 3; -fx-text-fill: -alg-text; -fx-padding: 6 8; }
+.gui-properties-scroll .text-field:focused { -fx-border-color: -alg-accent; }
+.gui-builder .section-heading { -fx-padding: 9 0 3 0; }
