@@ -16,6 +16,9 @@ import javafx.event.Event;
 import javafx.scene.control.*;
 import javafx.scene.image.PixelFormat;
 import javafx.scene.input.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.Window;
 import javax.imageio.ImageIO;
@@ -323,14 +326,14 @@ class CodalgoraApplicationTest {
           assertEquals(16.0, canvas.getChildren().getFirst().getLayoutX());
           GuiBuilderPane pane = (GuiBuilderPane) builder[0].getScene().getRoot();
           pane.linkAlgorithm(algorithm);
-          ListView<?> outline = (ListView<?>) builder[0].getScene().lookup("#guiOutline");
-          outline.getSelectionModel().select(1);
+          TreeView<?> outline = (TreeView<?>) builder[0].getScene().lookup("#guiOutline");
+          selectOutlineComponent(outline, 1);
           ComboBox<String> variable =
               (ComboBox<String>) builder[0].getScene().lookup("#guiVariableName");
           assertTrue(variable.getItems().contains("nome"));
           variable.setValue("nome");
           variable.fireEvent(new ActionEvent());
-          outline.getSelectionModel().select(2);
+          selectOutlineComponent(outline, 2);
           ComboBox<String> event = (ComboBox<String>) builder[0].getScene().lookup("#guiEventRoutine");
           assertTrue(event.getItems().contains("incrementar"));
           event.setValue("incrementar");
@@ -735,6 +738,192 @@ class CodalgoraApplicationTest {
         false, false, false, false, true, new PickResult(target, x, y)));
   }
 
+  private static <T> void selectOutlineComponent(TreeView<T> outline, int index) {
+    outline.getSelectionModel().select(outline.getRoot().getChildren().get(index));
+  }
+
+  @Test
+  void guiBuilderWorkspaceDividersResizeAndFollowEveryTheme() throws Exception {
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            builder.setWidth(920);
+            return null;
+          });
+      await(() -> builder.getScene().getWidth() <= 930);
+      double compactCanvasWidth =
+          fx(
+              () -> {
+                builder.getScene().getRoot().applyCss();
+                builder.getScene().getRoot().layout();
+                SplitPane split = (SplitPane) builder.getScene().lookup("#guiWorkspaceSplit");
+                assertEquals(3, split.getItems().size());
+                assertEquals(2, split.getDividers().size());
+                VBox palette = (VBox) split.getItems().get(0);
+                BorderPane design = (BorderPane) split.getItems().get(1);
+                ScrollPane properties = (ScrollPane) split.getItems().get(2);
+                assertTrue(palette.getWidth() >= palette.getMinWidth());
+                assertTrue(design.getWidth() >= design.getMinWidth());
+                assertTrue(properties.getWidth() >= properties.getMinWidth());
+
+                double initialPaletteWidth = palette.getWidth();
+                javafx.scene.Node divider = split.lookup(".split-pane-divider");
+                assertNotNull(divider);
+                var point =
+                    divider.localToScene(
+                        divider.getBoundsInLocal().getWidth() / 2,
+                        divider.getBoundsInLocal().getHeight() / 2);
+                mouse(divider, MouseEvent.MOUSE_PRESSED, point.getX(), point.getY(), 1);
+                mouse(divider, MouseEvent.MOUSE_DRAGGED, point.getX() + 24, point.getY(), 1);
+                mouse(divider, MouseEvent.MOUSE_RELEASED, point.getX() + 24, point.getY(), 1);
+                builder.getScene().getRoot().layout();
+                assertTrue(palette.getWidth() > initialPaletteWidth + 10);
+                captureStage(builder, "Codalgora-GUI-Compacto.png");
+                return design.getWidth();
+              });
+      double targetWidth = Math.min(1180, Screen.getPrimary().getVisualBounds().getWidth() - 80);
+      if (targetWidth > 930) {
+        fx(
+            () -> {
+              builder.setWidth(targetWidth);
+              return null;
+            });
+        await(() -> builder.getScene().getWidth() >= targetWidth - 30);
+      }
+      fx(
+          () -> {
+            builder.getScene().getRoot().layout();
+            SplitPane split = (SplitPane) builder.getScene().lookup("#guiWorkspaceSplit");
+            VBox palette = (VBox) split.getItems().get(0);
+            BorderPane design = (BorderPane) split.getItems().get(1);
+            ScrollPane properties = (ScrollPane) split.getItems().get(2);
+            if (targetWidth > 930)
+              assertTrue(design.getWidth() > compactCanvasWidth + (targetWidth - 920) * 0.15);
+            assertTrue(palette.getWidth() >= palette.getMinWidth());
+            assertTrue(design.getWidth() >= design.getMinWidth());
+            assertTrue(properties.getWidth() >= properties.getMinWidth());
+
+            javafx.scene.layout.Region dividerRegion =
+                (javafx.scene.layout.Region) split.lookup(".split-pane-divider");
+            for (EditorTheme theme : EditorTheme.values()) {
+              builder.getScene().getRoot().setStyle(theme.css());
+              builder.getScene().getRoot().applyCss();
+              String lineColor =
+                  java.util.Arrays.stream(theme.css().split(";"))
+                      .filter(token -> token.strip().startsWith("-alg-line:"))
+                      .map(token -> token.substring(token.indexOf(':') + 1).strip())
+                      .findFirst()
+                      .orElseThrow();
+              assertEquals(
+                  javafx.scene.paint.Color.web(lineColor),
+                  dividerRegion.getBackground().getFills().getFirst().getFill(),
+                  theme.label);
+            }
+            builder.getScene().getRoot().setStyle(EditorTheme.GRAPHITE.css());
+            builder.getScene().getRoot().applyCss();
+            captureStage(builder, "Codalgora-GUI-Paineis.png");
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
+  @Test
+  void componentTreeSelectsCanvasItemsAndWindowAndLoadsLegacyForms() throws Exception {
+    String legacyForm = """
+        {"schemaVersion":1,"title":"Formulário antigo","width":420,"height":520,
+         "elements":[
+          {"id":"btn-antigo","type":"BUTTON","name":"calcular","text":"Calcular",
+           "x":16,"y":16,"width":120,"height":38},
+          {"id":"rotulo-antigo","type":"LABEL","name":"resultado","text":"Resultado",
+           "x":80,"y":200,"width":180,"height":48}]}
+        """;
+    Path legacy = directory.resolve("formulario-legado.cgui.json");
+    Path saved = directory.resolve("formulario-legado-salvo.cgui.json");
+    Files.writeString(legacy, legacyForm);
+    Stage builder =
+        fx(
+            () -> {
+              GuiBuilderPane.open(
+                  stage,
+                  CodalgoraApplication.class.getResource("codalgora.css").toExternalForm(),
+                  EditorTheme.GRAPHITE.css(),
+                  ignored -> {});
+              return Window.getWindows().stream()
+                  .filter(window -> window instanceof Stage candidate
+                      && candidate.getTitle().startsWith("Construtor visual"))
+                  .map(Stage.class::cast)
+                  .findFirst()
+                  .orElseThrow();
+            });
+    try {
+      fx(
+          () -> {
+            GuiBuilderPane pane = (GuiBuilderPane) builder.getScene().getRoot();
+            pane.loadForm(legacy);
+            pane.applyCss();
+            pane.layout();
+            TreeView<?> tree = (TreeView<?>) pane.lookup("#guiOutline");
+            assertNotNull(tree.getRoot());
+            assertEquals(2, tree.getRoot().getChildren().size());
+            assertSame(tree.getRoot(), tree.getSelectionModel().getSelectedItem());
+            assertTrue(((TitledPane) pane.lookup("#guiWindowProperties")).isExpanded());
+            assertFalse(((VBox) pane.lookup("#guiComponentInspector")).isManaged());
+
+            selectOutlineComponent(tree, 1);
+            assertSame(tree.getRoot().getChildren().get(1), tree.getSelectionModel().getSelectedItem());
+            assertTrue(((VBox) pane.lookup("#guiComponentInspector")).isManaged());
+            assertFalse(((TitledPane) pane.lookup("#guiWindowProperties")).isExpanded());
+
+            javafx.scene.layout.Pane canvas = (javafx.scene.layout.Pane) pane.lookup("#guiCanvas");
+            javafx.scene.Node firstControl = canvas.getChildren().getFirst();
+            var controlPoint = firstControl.localToScene(20, 20);
+            mouse(firstControl, MouseEvent.MOUSE_PRESSED, controlPoint.getX(), controlPoint.getY(), 1);
+            assertSame(tree.getRoot().getChildren().getFirst(), tree.getSelectionModel().getSelectedItem());
+
+            mouse(canvas, MouseEvent.MOUSE_PRESSED, 390, 490, 1);
+            assertSame(tree.getRoot(), tree.getSelectionModel().getSelectedItem());
+            assertTrue(((TitledPane) pane.lookup("#guiWindowProperties")).isExpanded());
+            assertFalse(((VBox) pane.lookup("#guiComponentInspector")).isManaged());
+
+            pane.saveForm(saved);
+            GuiForm reopened = GuiFormStore.read(saved);
+            assertEquals(1, reopened.schemaVersion);
+            assertEquals("Formulário antigo", reopened.title);
+            assertEquals("calcular", reopened.elements.getFirst().name);
+            assertEquals("Resultado", reopened.elements.get(1).text);
+            assertNotNull(reopened.elements.getFirst().appearance);
+            return null;
+          });
+    } finally {
+      fx(
+          () -> {
+            builder.hide();
+            return null;
+          });
+    }
+  }
+
   @Test
   @SuppressWarnings("unchecked")
   void visualEditingHandlesTextAppearanceAndManagedLayouts() throws Exception {
@@ -755,7 +944,7 @@ class CodalgoraApplicationTest {
           pane.loadForm(original);
           CheckBox snap = (CheckBox) pane.lookup("#guiSnap");
           if (snap.isSelected()) snap.fire();
-          ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+          selectOutlineComponent((TreeView<?>) pane.lookup("#guiOutline"), 0);
           pane.applyCss(); pane.layout();
           javafx.scene.Node handle = pane.lookup("#guiResize-" + direction);
           assertTrue(handle.isVisible());
@@ -778,7 +967,7 @@ class CodalgoraApplicationTest {
       }
       fx(() -> {
         pane.loadForm(original);
-        ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+        selectOutlineComponent((TreeView<?>) pane.lookup("#guiOutline"), 0);
         pane.applyCss(); pane.layout();
         Event.fireEvent(pane, new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.F2, false, false, false, false));
         TextField inline = (TextField) pane.lookup("#guiInlineText");
@@ -795,7 +984,7 @@ class CodalgoraApplicationTest {
         ((Button) pane.lookup("#guiUndo")).fire(); pane.saveForm(edited);
         assertEquals("Botão 1", GuiFormStore.read(edited).elements.getFirst().text);
         ((Button) pane.lookup("#guiRedo")).fire();
-        ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+        selectOutlineComponent((TreeView<?>) pane.lookup("#guiOutline"), 0);
         ColorPicker background = (ColorPicker) pane.lookup("#guiBackgroundColor");
         background.setValue(javafx.scene.paint.Color.web("#12345680")); background.fireEvent(new ActionEvent());
         ((Spinner<Double>) pane.lookup("#guiFontSize")).getValueFactory().setValue(22.0);
@@ -811,14 +1000,14 @@ class CodalgoraApplicationTest {
         ((Button) pane.lookup("#guiUndo")).fire(); pane.saveForm(edited);
         assertEquals(2, GuiFormStore.read(edited).elements.size());
         pane.loadForm(edited);
-        ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+        selectOutlineComponent((TreeView<?>) pane.lookup("#guiOutline"), 0);
         captureStage(builder, "Codalgora-GUI-Edicao.png");
         return null;
       });
       for (GuiForm.LayoutMode layout : GuiForm.LayoutMode.values()) {
         fx(() -> {
           ((ComboBox<GuiForm.LayoutMode>) pane.lookup("#guiLayoutMode")).setValue(layout);
-          ((ListView<?>) pane.lookup("#guiOutline")).getSelectionModel().select(0);
+          selectOutlineComponent((TreeView<?>) pane.lookup("#guiOutline"), 0);
           pane.applyCss(); pane.layout();
           javafx.scene.Node handle = pane.lookup("#guiResize-SE");
           var point = handle.localToScene(4.5,4.5);

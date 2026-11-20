@@ -45,7 +45,9 @@ public final class GuiBuilderPane extends BorderPane {
   private GuiStyleInspector styleInspector;
   private GuiForm.Element copied;
   private Path copiedAlgorithm;
-  private final ListView<GuiForm.Element> outline = new ListView<>();
+  private final TreeView<Object> outline = new TreeView<>();
+  private final Object formRootValue = new Object();
+  private final TreeItem<Object> formRoot = new TreeItem<>(formRootValue);
   private final VBox inspector = new VBox(10);
   private final Label status = new Label("Arraste componentes para a tela ou escolha na paleta.");
   private final VBox eventProperty = new VBox(4);
@@ -56,6 +58,7 @@ public final class GuiBuilderPane extends BorderPane {
   private final Map<String, String> globalVariables = new LinkedHashMap<>();
   private final List<String> history = new ArrayList<>();
   private Label componentHeading;
+  private TitledPane windowSection;
   private Button undoButton, redoButton;
   private Spinner<Double> spacing, padding;
   private TextField formTitleField, formWidthField, formHeightField;
@@ -79,14 +82,17 @@ public final class GuiBuilderPane extends BorderPane {
     getStyleClass().add("gui-builder");
     tools = new GuiCanvasTools(form, canvas, this::widget, this::select, this::markChanged, this::updateFields, this::render);
     setTop(toolbar());
-    setLeft(palette());
-    setCenter(designArea());
-    setRight(propertiesPanel());
+    setCenter(workspace());
     setBottom(statusBar());
     outline
         .getSelectionModel()
         .selectedItemProperty()
-        .addListener((o, old, value) -> select(value));
+        .addListener(
+            (o, old, item) -> {
+              if (rendering || item == null) return;
+              if (item == formRoot) select(null);
+              else if (item.getValue() instanceof GuiForm.Element element) select(element);
+            });
     addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
       if (event.getTarget() instanceof TextInputControl) return;
       if (event.getCode() == javafx.scene.input.KeyCode.F2) { tools.editInline(); event.consume(); }
@@ -208,12 +214,50 @@ public final class GuiBuilderPane extends BorderPane {
     }
     Label treeHeading = new Label("Na interface");
     treeHeading.getStyleClass().add("section-heading");
-    outline.setPlaceholder(new Label("Adicione o primeiro componente"));
     outline.setId("guiOutline");
     outline.getStyleClass().add("explorer");
+    formRoot.setExpanded(true);
+    outline.setRoot(formRoot);
+    outline.setCellFactory(
+        tree ->
+            new TreeCell<>() {
+              @Override
+              protected void updateItem(Object item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                  setText(null);
+                  setTooltip(null);
+                } else if (getTreeItem() == formRoot) {
+                  setText("Formulário");
+                  setTooltip(new Tooltip(form.title));
+                } else if (item instanceof GuiForm.Element element) {
+                  setText(element.name);
+                  setTooltip(new Tooltip(element.type.label + " · " + element.name));
+                }
+              }
+            });
     VBox.setVgrow(outline, Priority.ALWAYS);
     box.getChildren().addAll(treeHeading, outline);
     return box;
+  }
+
+  private SplitPane workspace() {
+    VBox componentPalette = palette();
+    BorderPane design = designArea();
+    ScrollPane properties = propertiesPanel();
+
+    componentPalette.setMinWidth(170);
+    design.setMinWidth(300);
+    properties.setMinWidth(220);
+
+    SplitPane split = new SplitPane(componentPalette, design, properties);
+    split.setId("guiWorkspaceSplit");
+    split.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+    split.setAccessibleText("Paleta, área de design e propriedades redimensionáveis");
+    split.setAccessibleHelp("Arraste as divisórias entre os painéis para ajustar o espaço de trabalho.");
+    split.setDividerPositions(0.19, 0.78);
+    split.getStyleClass().add("gui-workspace");
+    return split;
   }
 
   private BorderPane designArea() {
@@ -264,7 +308,10 @@ public final class GuiBuilderPane extends BorderPane {
         (scroll.getViewportBounds().getWidth()-60)/form.width,
         (scroll.getViewportBounds().getHeight()-60)/form.height)))));
     Label mode = new Label("Design"); mode.getStyleClass().add("heading");
-    HBox controls = new HBox(12, mode, grid, zoom, percent, fit); controls.setPadding(new Insets(10));
+    FlowPane controls = new FlowPane(12, 8, mode, grid, zoom, percent, fit);
+    controls.setId("guiCanvasToolbar");
+    controls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+    controls.setPadding(new Insets(10));
     BorderPane area = new BorderPane(scroll); area.setTop(controls); return area;
   }
 
@@ -323,13 +370,16 @@ public final class GuiBuilderPane extends BorderPane {
     List<Node> windowFields = new ArrayList<>(box.getChildren().subList(2, box.getChildren().size()));
     box.getChildren().remove(2, box.getChildren().size());
     VBox windowProperties = new VBox(8); windowProperties.getChildren().setAll(windowFields);
-    TitledPane windowSection = new TitledPane("Janela e layout", windowProperties);
+    windowSection = new TitledPane("Janela e layout", windowProperties);
+    windowSection.setId("guiWindowProperties");
     windowSection.setExpanded(false); box.getChildren().add(windowSection);
     componentHeading = new Label("Componente selecionado");
+    componentHeading.setId("guiComponentHeading");
     componentHeading.getStyleClass().add("section-heading");
     box.getChildren().add(componentHeading);
     inspector.setVisible(false);
     inspector.setManaged(false);
+    inspector.setId("guiComponentInspector");
     nameField = field();
     nameField.setId("guiName");
     textField = field();
@@ -397,6 +447,8 @@ public final class GuiBuilderPane extends BorderPane {
     scroll.setFitToWidth(true);
     scroll.setFitToHeight(true);
     scroll.setPrefWidth(255);
+    scroll.setId("guiPropertiesScroll");
+    scroll.setAccessibleText("Propriedades do formulário ou do componente selecionado");
     scroll.getStyleClass().add("gui-properties-scroll");
     return scroll;
   }
@@ -458,15 +510,23 @@ public final class GuiBuilderPane extends BorderPane {
   private void render() {
     if (rendering) return;
     rendering = true;
-    outline.getItems().setAll(form.elements);
+    formRoot.getChildren().setAll(
+        form.elements.stream().map(element -> new TreeItem<Object>(element)).toList());
+    formRoot.setExpanded(true);
+    outline.refresh();
+    if (selected != null && !form.elements.contains(selected)) selected = null;
     tools.render(selected);
-    if (selected != null && form.elements.contains(selected)) outline.getSelectionModel().select(selected);
-    else {
-      selected = null;
-      outline.getSelectionModel().clearSelection();
-    }
+    if (selected == null) outline.getSelectionModel().select(formRoot);
+    else outline.getSelectionModel().select(findOutlineItem(selected));
     updateFields();
     rendering = false;
+  }
+
+  private TreeItem<Object> findOutlineItem(GuiForm.Element element) {
+    return formRoot.getChildren().stream()
+        .filter(item -> item.getValue() == element)
+        .findFirst()
+        .orElse(formRoot);
   }
 
   private Node widget(GuiForm.Element element) {
@@ -523,16 +583,28 @@ public final class GuiBuilderPane extends BorderPane {
   }
 
   private void select(GuiForm.Element element) {
-    if (rendering || element == selected) return;
+    if (rendering) return;
+    if (element == null) {
+      selected = null;
+      tools.select(null);
+      windowSection.setExpanded(true);
+      if (outline.getSelectionModel().getSelectedItem() != formRoot)
+        outline.getSelectionModel().select(formRoot);
+      updateFields();
+      return;
+    }
+    if (element == selected) return;
     selected = element;
     tools.select(element);
-    outline.getSelectionModel().select(element);
+    windowSection.setExpanded(false);
+    outline.getSelectionModel().select(findOutlineItem(element));
     updateFields();
   }
 
   private void updateFields() {
     updatingInspector = true;
     try {
+      outline.refresh();
       formTitleField.setText(form.title);
       formWidthField.setText(number(form.width));
       formHeightField.setText(number(form.height));
@@ -545,7 +617,8 @@ public final class GuiBuilderPane extends BorderPane {
       componentHeading.setText(
           hasSelection
               ? "Componente selecionado · " + selected.type.label
-              : "Componente selecionado");
+              : "Formulário selecionado");
+      windowSection.setExpanded(!hasSelection);
       if (!hasSelection) return;
       boolean supportsEvent =
           selected.type == GuiForm.Type.BUTTON

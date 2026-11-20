@@ -43,6 +43,12 @@ final class GuiCanvasTools extends StackPane {
     this.form = form; this.canvas = canvas; this.factory = factory;
     this.select = select; this.change = change; this.fields = fields; this.rebuild = rebuild;
     getChildren().addAll(canvas, overlay);
+    canvas.addEventFilter(
+        MouseEvent.MOUSE_PRESSED,
+        event -> {
+          if (event.getButton() == MouseButton.PRIMARY && !targetsComponent(event.getTarget()))
+            select.accept(null);
+        });
     overlay.setPickOnBounds(false);
     frame.setFill(Color.TRANSPARENT); frame.setStroke(Color.web("#1677c8")); frame.setStrokeWidth(1.5);
     frame.setMouseTransparent(true); size.setMouseTransparent(true);
@@ -118,6 +124,15 @@ final class GuiCanvasTools extends StackPane {
   }
 
   void select(GuiForm.Element element) { if (editing != null && editing != element) finishInline(true); selected = element; updateSelection(); }
+
+  private boolean targetsComponent(Object target) {
+    if (!(target instanceof Node node)) return false;
+    while (node != null && node != canvas) {
+      if (node.getUserData() instanceof GuiForm.Element) return true;
+      node = node.getParent();
+    }
+    return false;
+  }
   private void begin(MouseEvent event) {
     if (selected == null) return;
     dragStart = sceneToLocal(event.getSceneX(), event.getSceneY());
