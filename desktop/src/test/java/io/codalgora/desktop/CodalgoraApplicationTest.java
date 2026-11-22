@@ -106,6 +106,81 @@ class CodalgoraApplicationTest {
     }
   }
 
+  @Test
+  void creditsDialogShowsUnchangedBioAndClasspathPixQr() throws Exception {
+    Window[] creditsWindow = new Window[1];
+    try {
+      fx(
+          () -> {
+            MenuBar menuBar = (MenuBar) stage.getScene().lookup(".menu-bar");
+            Menu creditsMenu =
+                menuBar.getMenus().stream()
+                    .filter(menu -> menu.getText().equals("Créditos"))
+                    .findFirst()
+                    .orElseThrow();
+            creditsMenu.getItems().getFirst().fire();
+            creditsWindow[0] =
+                Window.getWindows().stream()
+                    .filter(window -> window != stage && window.isShowing())
+                    .filter(window -> window.getScene() != null
+                        && window.getScene().lookup("#pixDonationQr") != null)
+                    .findFirst()
+                    .orElseThrow();
+            var root = creditsWindow[0].getScene().getRoot();
+            root.applyCss();
+            root.layout();
+            javafx.scene.image.ImageView qr =
+                (javafx.scene.image.ImageView) root.lookup("#pixDonationQr");
+            assertEquals(1000, qr.getImage().getWidth());
+            assertEquals(1000, qr.getImage().getHeight());
+            assertEquals(320, qr.getFitWidth());
+            assertTrue(qr.isPreserveRatio());
+            assertFalse(qr.isSmooth());
+            assertTrue(root.lookup("#pixDonationCard").getStyle().contains("white"));
+            List<String> labels =
+                root.lookupAll(".label").stream()
+                    .filter(Label.class::isInstance)
+                    .map(Label.class::cast)
+                    .map(Label::getText)
+                    .toList();
+            assertTrue(labels.contains("Sobre o desenvolvedor"));
+            assertTrue(labels.contains("Arthur Almeida"));
+            assertTrue(labels.contains("Apoie o Codalgora ❤️"));
+            assertTrue(
+                labels.stream()
+                    .anyMatch(
+                        text -> text != null && text.contains("contribuição voluntária via Pix")));
+            assertTrue(labels.contains("Escaneie com o aplicativo do seu banco para contribuir."));
+            assertTrue(
+                labels.stream()
+                    .anyMatch(text -> text != null && text.contains("O Codalgora é gratuito")));
+            assertTrue(
+                root.lookupAll(".hyperlink").stream()
+                    .anyMatch(
+                        node ->
+                            node instanceof Hyperlink link
+                                && link.getText().equals("github.com/thurdass")));
+            assertTrue(
+                root.lookupAll(".button").stream()
+                    .anyMatch(node -> node instanceof Button button && button.getText().equals("Fechar")));
+            captureWindow(creditsWindow[0], "Codalgora-Creditos-Pix.png");
+            ScrollPane creditsScroll = (ScrollPane) root.lookup(".scroll-pane");
+            creditsScroll.setVvalue(1);
+            root.applyCss();
+            root.layout();
+            captureWindow(creditsWindow[0], "Codalgora-Creditos-Pix-Doacao.png");
+            return null;
+          });
+    } finally {
+      if (creditsWindow[0] != null)
+        fx(
+            () -> {
+              creditsWindow[0].hide();
+              return null;
+            });
+    }
+  }
+
   private static <T> T fx(Callable<T> action) throws Exception {
     FutureTask<T> task = new FutureTask<>(action);
     Platform.runLater(task);
@@ -125,6 +200,10 @@ class CodalgoraApplicationTest {
   }
 
   private void captureStage(Stage target, String name) throws Exception {
+    captureWindow(target, name);
+  }
+
+  private void captureWindow(Window target, String name) throws Exception {
     var image = target.getScene().snapshot(null);
     int width = (int) image.getWidth(), height = (int) image.getHeight();
     int[] pixels = new int[width * height];
@@ -297,6 +376,10 @@ class CodalgoraApplicationTest {
           assertEquals("Editar", menuBar.getMenus().get(1).getText());
           Menu builderMenu = menuBar.getMenus().get(2);
           assertEquals("Construtor visual", builderMenu.getText());
+          assertEquals("Créditos", menuBar.getMenus().get(3).getText());
+          Menu helpMenu = menuBar.getMenus().get(5);
+          assertEquals("Ajuda", helpMenu.getText());
+          assertTrue(helpMenu.getItems().stream().noneMatch(item -> item.getText().equals("Créditos")));
           MenuItem openBuilder = builderMenu.getItems().getFirst();
           assertEquals("Abrir construtor visual…", openBuilder.getText());
           openBuilder.fire();

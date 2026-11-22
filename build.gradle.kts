@@ -1,7 +1,7 @@
 plugins { base }
 allprojects {
     group = "io.codalgora"
-    version = "0.2.1"
+    version = "0.3.0"
     repositories { mavenCentral() }
 }
 subprojects {

@@ -1,6 +1,6 @@
 # Instalação e desenvolvimento
 
-O Codalgora usa Java 21, JavaFX 21, ANTLR4 e RichTextFX. A distribuição v0.2.1 publica pacotes Linux e Windows após geração e validação nos runners correspondentes. A release histórica v0.2.0 contém os instaladores da marca Algora e permanece preservada. O build utiliza Gradle Wrapper com Kotlin DSL; não é necessário instalar Gradle globalmente. A primeira execução precisa de rede para baixar a distribuição e as dependências. Um JDK completo, com `jpackage`, é necessário para gerar pacotes.
+O Codalgora usa Java 21, JavaFX 21, ANTLR4 e RichTextFX. A versão 0.3.0 inclui o construtor visual de formulários e exportação de aplicativos independentes. O fluxo de release gera instaladores para Linux e Windows e publica os downloads depois da validação dos dois sistemas. As versões anteriores v0.2.1 (Codalgora) e v0.2.0 (Algora) permanecem disponíveis. O build utiliza Gradle Wrapper com Kotlin DSL; não é necessário instalar Gradle globalmente. A primeira execução precisa de rede para baixar a distribuição e as dependências. Um JDK completo, com `jpackage`, é necessário para gerar pacotes.
 
 ## Desenvolvimento
 
@@ -62,7 +62,7 @@ Para diagnosticar a instalação histórica Algora v0.2.0 pelo PowerShell, no di
 
 ### Instalador Windows em execução sem janela
 
-Se o `.exe` histórico da v0.2.0 ficar em execução sem mostrar a tela de instalação, use o pacote direto `Algora-0.2.0.msi` da mesma release. Esse formato evita o executável que extrai um MSI temporário e chama o Windows Installer. Os dois instaladores pertencem à identidade Algora e não são os futuros pacotes Codalgora 0.2.1.
+Se o `.exe` histórico da v0.2.0 ficar em execução sem mostrar a tela de instalação, use o pacote direto `Algora-0.2.0.msi` da mesma release. Esse formato evita o executável que extrai um MSI temporário e chama o Windows Installer. Esses instaladores pertencem à identidade Algora; os pacotes Codalgora atuais usam outro nome e versão.
 
 O CI verifica a aparição do assistente visível dos dois formatos, cancela esse assistente e executa separadamente a instalação silenciosa, abertura do aplicativo e desinstalação. Capturas das telas, registros dos controles e logs MSI são mantidos no artefato `Windows-installer-diagnostics`.
 
