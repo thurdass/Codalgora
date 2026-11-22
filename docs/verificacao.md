@@ -115,6 +115,10 @@ O exemplo `examples/gui-builder/contador.cgui.json` foi exportado para Linux com
 
 Isso valida a edição automatizada em Xvfb e a aparência inicial do pacote Linux. Uma nova sessão manual com mouse em desktop real e a exportação em Windows/macOS não foram realizadas naquela etapa. Fontes adicionais dependem da instalação no sistema de destino. O aviso JavaFX do módulo sem nome permanece; não foi ocultado.
 
-### Preparação da release Codalgora v0.3.0
+### Validação e publicação Codalgora v0.3.0
 
-A versão 0.3.0 reúne o Construtor Visual, os vínculos de controles a eventos Portugol, a exportação portátil e a seção opcional de apoio via Pix. A publicação está configurada para aguardar os jobs Linux e Windows, conferir a presença dos três instaladores e validar seus hashes antes de liberar a release. As notas estão em [`docs/releases/v0.3.0.md`](releases/v0.3.0.md). Os resultados de CI desta versão serão registrados após a execução do workflow da tag `v0.3.0`; os resultados anteriores neste documento continuam vinculados aos commits e versões que identificam.
+Em 22/11/2026, o [workflow da tag `v0.3.0` (44978474153)](https://github.com/thurdass/Codalgora/actions/runs/44978474153) passou nos runners `ubuntu-latest` e `windows-latest`, no commit integrado `8412080`. Nos dois sistemas, `build`, testes, geração do instalador e execução do aplicativo empacotado passaram.
+
+No Linux, o CI conferiu a identidade da janela e do atalho `.desktop`, instalou o DEB, abriu o aplicativo e o removeu. No Windows, gerou MSI e EXE, verificou as telas dos instaladores, instalou cada pacote, abriu a aplicação instalada e desinstalou ambos. O job de release confirmou os três instaladores, recompôs `SHA256SUMS.txt` e validou os hashes antes de publicar.
+
+A release [Codalgora v0.3.0](https://github.com/thurdass/Codalgora/releases/tag/v0.3.0) foi publicada com `codalgora_0.3.0_amd64.deb`, `Codalgora-0.3.0.msi`, `Codalgora-0.3.0.exe` e `SHA256SUMS.txt`. As notas completas estão em [`docs/releases/v0.3.0.md`](releases/v0.3.0.md); as validações de versões anteriores neste documento continuam vinculadas aos commits e versões que identificam.
